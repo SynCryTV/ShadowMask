@@ -108,6 +108,31 @@ local friendlyPlayerNameplateCVars = {
     "UnitNameFriendlyPlayerName",
 }
 
+function SM:ApplyEllesmereFriendlyNameplatePrivacy(isHiding)
+    local db = _G.EllesmereUINameplatesDB
+    local ui = _G.EllesmereUI
+    local module = ui and ui._ModuleNS and ui._ModuleNS.EllesmereUINameplates
+    local profile = db and db.profile
+    if not profile then return end
+    if self.ellesmereFriendlyNameplateState == isHiding then return end
+    self.ellesmereFriendlyNameplateState = isHiding
+
+    local restore = self.db.ellesmereFriendlyPlayersRestore
+    if isHiding then
+        if not restore then
+            restore = { value = profile.showFriendlyPlayers, wasNil = profile.showFriendlyPlayers == nil }
+            self.db.ellesmereFriendlyPlayersRestore = restore
+        end
+        profile.showFriendlyPlayers = false
+    elseif restore then
+        profile.showFriendlyPlayers = restore.wasNil and nil or restore.value
+        self.db.ellesmereFriendlyPlayersRestore = nil
+    end
+    if module and module.UpdateFriendlyNameplateSystem then
+        module.UpdateFriendlyNameplateSystem()
+    end
+end
+
 function SM:ApplyFriendlyNameplatePrivacy()
     if not self.db or not SetCVar then return end
     if InCombatLockdown() then
@@ -115,8 +140,10 @@ function SM:ApplyFriendlyNameplatePrivacy()
         return
     end
     self.friendlyNameplateUpdatePending = nil
+    local isHiding = self.db.enabled and self.db.hideFriendlyNameplates
+    self:ApplyEllesmereFriendlyNameplatePrivacy(isHiding)
     local restore = self.db.friendlyNameplateCVarRestore
-    if self.db.enabled and self.db.hideFriendlyNameplates then
+    if isHiding then
         restore = restore or {}
         self.db.friendlyNameplateCVarRestore = restore
         for _, cvar in ipairs(friendlyPlayerNameplateCVars) do
