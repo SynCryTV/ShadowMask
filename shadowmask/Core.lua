@@ -10,11 +10,10 @@ local defaults = {
     maskGroup = true,
     maskChat = true,
     hideFriendlyNameplates = true,
-    blockLowLevelWhispers = true,
-    blockLowLevelInvites = true,
+    blockWhispers = false,
+    blockInvites = false,
     blockDuels = true,
     showMinimapButton = true,
-    trusted = {},
 }
 
 local function copyDefaults(target, source)
@@ -34,11 +33,6 @@ end
 function SM:SanitizeAlias(value, fallback)
     local alias = tostring(value or ""):gsub("%s+", "")
     return alias ~= "" and alias or fallback
-end
-
-function SM:IsTrusted(name)
-    local key = self:NormalizeName(name)
-    return key and self.db.trusted[key]
 end
 
 function SM:IsActiveGroupMemberName(name)
@@ -65,7 +59,6 @@ function SM:AliasForName(name)
     if self.db.maskSelf and ownName and (not issecretvalue or not issecretvalue(ownName)) and bareName:lower() == ownName:lower() then
         return self:SanitizeAlias(self.db.ownAlias, "Streamer")
     end
-    if self:IsTrusted(bareName) then return name end
     if not self.db.maskGroup then return name end
 
     local prefix = self:SanitizeAlias(self.db.aliasPrefix, "Player")
@@ -91,7 +84,6 @@ function SM:AliasForChatAuthor(name)
     if self.db.maskSelf and ownName and (not issecretvalue or not issecretvalue(ownName)) and bareName:lower() == ownName:lower() then
         return self:SanitizeAlias(self.db.ownAlias, "Streamer")
     end
-    if self:IsTrusted(bareName) then return name end
     -- Chat can contain thousands of unique authors. Never allocate an alias
     -- entry for it; a generic label is enough to conceal the sender.
     return self:SanitizeAlias(self.db.aliasPrefix, "Player")
@@ -164,43 +156,8 @@ function SM:Refresh()
     if self.UpdateMinimapButton then self:UpdateMinimapButton() end
 end
 
--- Levels are kept only for the current session and only by GUID.  This avoids
--- building a name database from chat while still allowing known low-level
--- characters to be filtered.
-function SM:RememberUnitLevel(unit)
-    if not unit or not UnitExists(unit) then return end
-    local guid, level = UnitGUID(unit), UnitLevel(unit)
-    if (issecretvalue and (issecretvalue(guid) or issecretvalue(level)))
-        or type(guid) ~= "string" or type(level) ~= "number" or level <= 0 then return end
-    self.knownLevels = self.knownLevels or {}
-    self.knownLevels[guid] = level
-end
-
-function SM:IsKnownLowLevel(guid)
-    if (issecretvalue and issecretvalue(guid)) or type(guid) ~= "string" then return false end
-    return self.knownLevels and self.knownLevels[guid] and self.knownLevels[guid] < 21
-end
-
-function SM:RememberVisibleUnitLevels()
-    self:RememberUnitLevel("target")
-    self:RememberUnitLevel("focus")
-    local prefix, count = IsInRaid() and "raid" or "party", IsInRaid() and GetNumGroupMembers() or GetNumSubgroupMembers()
-    for index = 1, count do self:RememberUnitLevel(prefix .. index) end
-end
-
 function SM:Print(message)
     print("|cff8b5cf6ShadowMask|r " .. message)
-end
-
-function SM:AddName(listName, name)
-    local key = self:NormalizeName(name)
-    if not key then
-        self:Print("Usage: /sm " .. listName .. " <name>")
-        return
-    end
-    self.db[listName][key] = true
-    self:Refresh()
-    self:Print(name .. " added to " .. listName .. ".")
 end
 
 SLASH_SHADOWMASK1 = "/shadowmask"
@@ -212,11 +169,6 @@ SlashCmdList.SHADOWMASK = function(message)
         SM.db.enabled = not SM.db.enabled
         SM:Refresh()
         SM:Print(SM.db.enabled and "enabled." or "disabled.")
-    elseif command == "trust" then
-        SM:AddName("trusted", rest)
-    elseif command == "untrust" then
-        local key = SM:NormalizeName(rest)
-        if key then SM.db.trusted[key] = nil; SM:Refresh(); SM:Print(rest .. " removed.") end
     elseif command == "alias" and rest ~= "" then
         SM.db.ownAlias = SM:SanitizeAlias(rest, "Streamer")
         SM:Refresh()
@@ -226,7 +178,7 @@ SlashCmdList.SHADOWMASK = function(message)
     elseif command == "minimap" then
         SM:ToggleMinimapButton()
     else
-        SM:Print("/sm options | minimap | toggle | trust <name> | untrust <name> | alias <text>")
+        SM:Print("/sm options | minimap | toggle | alias <text>")
     end
 end
 
@@ -245,21 +197,19 @@ eventFrame:SetScript("OnEvent", function(_, event, ...)
         SM.db = ShadowMaskDB
         -- Remove the retired persistent block list; player names are never
         -- collected or stored by ShadowMask.
-        SM.db.blocked, SM.db.autoDeclineBlocked = nil, nil
+        SM.db.blocked, SM.db.autoDeclineBlocked, SM.db.trusted = nil, nil, nil
         SM.db.ownAlias = SM:SanitizeAlias(SM.db.ownAlias, "Streamer")
         SM.db.aliasPrefix = SM:SanitizeAlias(SM.db.aliasPrefix, "Player")
         SM.aliases, SM.aliasCount = {}, 0
-        SM.knownLevels = {}
         SM:InstallChatFilters()
         C_Timer.After(1, function() SM:Refresh() end)
         SM:Print("loaded. Type /sm for commands.")
     elseif event == "PLAYER_REGEN_ENABLED" and SM.friendlyNameplateUpdatePending then
         SM:ApplyFriendlyNameplatePrivacy()
-    elseif event == "PARTY_INVITE_REQUEST" and SM.db and SM.db.enabled and SM.db.blockLowLevelInvites then
-        local inviterGUID = select(8, ...)
-        if SM:IsKnownLowLevel(inviterGUID) and not InCombatLockdown() then
+    elseif event == "PARTY_INVITE_REQUEST" and SM.db and SM.db.enabled and SM.db.blockInvites then
+        if not InCombatLockdown() then
             DeclineGroup()
-            SM:Print("Declined an invite from a known character below level 21.")
+            SM:Print("Group invitation declined.")
         end
     elseif event == "DUEL_REQUESTED" and SM.db and SM.db.enabled and SM.db.blockDuels then
         if not InCombatLockdown() then
@@ -268,7 +218,6 @@ eventFrame:SetScript("OnEvent", function(_, event, ...)
         end
     elseif SM.db then
         C_Timer.After(0, function()
-            SM:RememberVisibleUnitLevels()
             SM:Refresh()
             if event == "PLAYER_TARGET_CHANGED" and SM.RefreshTargetPlayerNameplatePrivacyDeferred then
                 SM:RefreshTargetPlayerNameplatePrivacyDeferred()

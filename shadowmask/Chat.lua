@@ -9,10 +9,7 @@ local chatEvents = {
 
 function SM:FilterChat(_, event, message, author, ...)
     if not self.db or not self.db.enabled then return false end
-    -- In chat filters the sender GUID is the 12th event argument (10th in
-    -- this vararg list).  Unknown whisperers cannot be level-checked safely.
-    local guid = select(10, ...)
-    if event == "CHAT_MSG_WHISPER" and self.db.blockLowLevelWhispers and self:IsKnownLowLevel(guid) then
+    if event == "CHAT_MSG_WHISPER" and self.db.blockWhispers then
         return true
     end
     if not self.db.maskChat then return false end

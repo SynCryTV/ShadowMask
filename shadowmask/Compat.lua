@@ -243,10 +243,14 @@ function SM:HideTargetPlayerNameplateForUnit(unit)
     local isTarget, isPlayer = UnitIsUnit(unit, "target"), UnitIsPlayer("target")
     if (issecretvalue and (issecretvalue(isTarget) or issecretvalue(isPlayer))) or not isTarget or not isPlayer then return end
 
-    -- This gets the exact plate that NAME_PLATE_UNIT_ADDED just created.  It
-    -- covers the selected name-only plate that may not be returned for the
-    -- generic "target" lookup until the next render update.
-    local plate = C_NamePlate and C_NamePlate.GetNamePlateForUnit and C_NamePlate.GetNamePlateForUnit(unit, true)
+    -- The driver resolves both ordinary and Blizzard's "script" nameplates.
+    -- The latter is the selected-player name-only display seen in the report,
+    -- and is not always exposed by C_NamePlate's direct lookup.
+    local driver = _G.NamePlateDriverFrame
+    local plate = driver and driver.GetNamePlateForUnit and driver:GetNamePlateForUnit(unit)
+    if not plate and C_NamePlate and C_NamePlate.GetNamePlateForUnit then
+        plate = C_NamePlate.GetNamePlateForUnit(unit, issecure and issecure() or false)
+    end
     local frame = plate and (plate.UnitFrame or plate.unitFrame)
     self:HideTargetNameplate(plate)
     self:HideTargetNameplate(frame)
