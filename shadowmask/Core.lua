@@ -44,6 +44,22 @@ function SM:IsBlocked(name)
     return key and self.db.blocked[key]
 end
 
+function SM:IsActiveGroupMemberName(name)
+    if not IsInGroup() then return false end
+    local count = IsInRaid() and GetNumGroupMembers() or GetNumSubgroupMembers()
+    local prefix = IsInRaid() and "raid" or "party"
+    local key = self:NormalizeName(name)
+    if not key then return false end
+    for index = 1, count do
+        local groupName = UnitName(prefix .. index)
+        if not (issecretvalue and issecretvalue(groupName))
+            and self:NormalizeName(groupName) == key then
+            return true
+        end
+    end
+    return false
+end
+
 function SM:AliasForName(name)
     if issecretvalue and issecretvalue(name) then return name end
     if not self.db.enabled or not name or name == "" then return name end
@@ -55,12 +71,16 @@ function SM:AliasForName(name)
     if self:IsTrusted(bareName) then return name end
     if not self.db.maskGroup then return name end
 
+    local prefix = self:SanitizeAlias(self.db.aliasPrefix, "Player")
+    -- A fixed public alias is enough for targets, tooltips and chat-adjacent
+    -- text. Numbered aliases exist only for people in the current party/raid.
+    if not self:IsActiveGroupMemberName(bareName) then return prefix end
+
     self.aliases = self.aliases or {}
     local key = self:NormalizeName(bareName)
     if not key then return name end
     if not self.aliases[key] then
         self.aliasCount = (self.aliasCount or 0) + 1
-        local prefix = self:SanitizeAlias(self.db.aliasPrefix, "Player")
         self.aliases[key] = string.format("%s%02d", prefix, self.aliasCount)
     end
     return self.aliases[key]

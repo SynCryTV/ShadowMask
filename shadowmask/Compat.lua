@@ -12,6 +12,25 @@ local function maskFrameName(frame)
     end
 end
 
+local function maskEllesmereRaidButton(module, button, unit, data)
+    if not button then return end
+    unit = unit or button:GetAttribute("unit")
+    if issecretvalue and issecretvalue(unit) then return end
+    if not unit or not UnitExists(unit) then return end
+    local hostile = UnitCanAttack("player", unit)
+    if (issecretvalue and issecretvalue(hostile)) or hostile then return end
+    local isPlayer = UnitIsPlayer(unit)
+    if (issecretvalue and issecretvalue(isPlayer)) or not isPlayer then return end
+    local name = UnitName(unit)
+    if issecretvalue and issecretvalue(name) then return end
+    if not name then return end
+    data = data or (module.GetFFD and module.GetFFD(button))
+    if not data then return end
+    local alias = SM:AliasForName(name)
+    if data.nameText and data.nameText.SetText then data.nameText:SetText(alias) end
+    if data.topNameBarText and data.topNameBarText.SetText then data.topNameBarText:SetText(alias) end
+end
+
 function SM:RefreshDandersFrames()
     local df = _G.DandersFrames
     if not df then return end
@@ -62,6 +81,40 @@ function SM:RefreshEllesmereUI()
         if type(module) == "table" then
             for _, frame in pairs(module.frames or module.Frames or {}) do maskFrameName(frame) end
         end
+    end
+    self:InstallEllesmereRaidFrameProvider()
+    self:RefreshEllesmereRaidFrames()
+end
+
+function SM:RefreshEllesmereRaidFrames()
+    local ui = _G.EllesmereUI
+    local module = ui and ui._ModuleNS and ui._ModuleNS.EllesmereUIRaidFrames
+    if not module then return end
+    for _, button in ipairs(module._allButtons or {}) do
+        maskEllesmereRaidButton(module, button)
+    end
+    for unit, button in pairs(module._partyUnitToButton or {}) do
+        maskEllesmereRaidButton(module, button, unit)
+    end
+end
+
+function SM:InstallEllesmereRaidFrameProvider()
+    local ui = _G.EllesmereUI
+    local module = ui and ui._ModuleNS and ui._ModuleNS.EllesmereUIRaidFrames
+    if not module or module._shadowMaskRaidProvider then return end
+    module._shadowMaskRaidProvider = true
+    -- Raid Frames exposes its finished paint function. Hooking it means the
+    -- alias is applied in the same repaint as Ellesmere's own display name,
+    -- avoiding the visible one-second name flash from polling.
+    if module._PaintButtonTail then
+        hooksecurefunc(module, "_PaintButtonTail", function(button, data, _, unit)
+            maskEllesmereRaidButton(module, button, unit, data)
+        end)
+    end
+    if module.RefreshAllNames then
+        hooksecurefunc(module, "RefreshAllNames", function()
+            SM:RefreshEllesmereRaidFrames()
+        end)
     end
 end
 
