@@ -2,8 +2,8 @@ name: Package and release
 
 on:
   push:
-    tags:
-      - "v*"
+    branches:
+      - main
   workflow_dispatch:
 
 permissions:
@@ -15,11 +15,40 @@ jobs:
     steps:
       - name: Check out source
         uses: actions/checkout@v4
-      - name: Build addon ZIP
+        with:
+          fetch-depth: 0
+      - name: Read addon version from TOC
+        id: version
         shell: pwsh
-        run: ./tools/package.ps1 -Version "${{ github.ref_name }}"
+        run: |
+          $line = Select-String -LiteralPath "shadowmask/ShadowMask.toc" -Pattern '^## Version:\s*(.+)$' | Select-Object -First 1
+          if (-not $line) { throw "ShadowMask.toc has no ## Version entry." }
+          $version = $line.Matches[0].Groups[1].Value.Trim()
+          if ($version -notmatch '^\d+\.\d+\.\d+([.-][0-9A-Za-z.-]+)?$') {
+            throw "Invalid addon version: $version"
+          }
+          "version=$version" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          "tag=v$version" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+      - name: Check whether this TOC version is already released
+        id: release_check
+        shell: pwsh
+        run: |
+          git fetch --tags --force
+          $tag = "${{ steps.version.outputs.tag }}"
+          if (git rev-parse -q --verify "refs/tags/$tag") {
+            "create_release=false" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          } else {
+            "create_release=true" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          }
+      - name: Build addon ZIP
+        if: steps.release_check.outputs.create_release == 'true'
+        shell: pwsh
+        run: ./tools/package.ps1 -Version "${{ steps.version.outputs.version }}"
       - name: Create GitHub release
+        if: steps.release_check.outputs.create_release == 'true'
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: ShadowMask v${{ steps.version.outputs.version }}
           generate_release_notes: true
           files: dist/*.zip

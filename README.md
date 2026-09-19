@@ -6,7 +6,7 @@ Retail WoW streamer-privacy addon. ShadowMask replaces character names with stab
 
 Download `ShadowMask-<version>.zip` from GitHub Releases, extract it into `World of Warcraft/_retail_/Interface/AddOns/`, then reload the game. The ZIP already contains the required `shadowmask` addon folder.
 
-For a local build, run `./tools/package.ps1 -Version 0.1.0`. The finished archive is written to `dist/`.
+For a local build, run `./tools/package.ps1`. The script reads the version from `shadowmask/ShadowMask.toc`; the finished archive is written to `dist/`.
 
 ## Commands
 
@@ -30,4 +30,4 @@ The level of an incoming inviter is not reliably supplied by the WoW invitation 
 
 ## Release workflow
 
-Pushing a tag such as `v0.1.0` runs the GitHub Actions release workflow. It packages the addon and attaches the ZIP to a GitHub Release, which provides a stable downloadable release asset for update clients that support GitHub releases.
+Every push to `main` reads `## Version` from `shadowmask/ShadowMask.toc`. If that version does not already have a matching `v<version>` tag, GitHub Actions packages the addon, creates the tag and GitHub Release, then attaches the ZIP. Bump the TOC version before a release; ordinary pushes with an already released version do nothing.
