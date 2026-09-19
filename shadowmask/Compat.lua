@@ -181,6 +181,37 @@ function SM:TrackNameplateUnit(unit)
     if frame then self:TrackNameplateText(frame.name or frame.unitName, unit) end
 end
 
+function SM:RefreshEllesmereDamageMeter()
+    local ui = _G.EllesmereUI
+    local module = ui and ui._ModuleNS and ui._ModuleNS.EllesmereUIDamageMeters
+    if not module then return end
+    for _, window in ipairs(module._windows or {}) do
+        for _, bar in ipairs(window.rowPool or {}) do
+            local src = bar._src
+            local guid = src and src.sourceGUID
+            local name = src and src.name
+            if not (issecretvalue and issecretvalue(guid))
+                and type(guid) == "string" and guid:match("^Player%-")
+                and not (issecretvalue and issecretvalue(name))
+                and name and bar.label and bar.label.SetText then
+                bar.label:SetText(self:AliasForName(name))
+            end
+        end
+    end
+end
+
+function SM:InstallEllesmereDamageMeterProvider()
+    local ui = _G.EllesmereUI
+    local module = ui and ui._ModuleNS and ui._ModuleNS.EllesmereUIDamageMeters
+    if not module or module._shadowMaskDamageMeterProvider then return end
+    module._shadowMaskDamageMeterProvider = true
+    if module.RefreshMeter then
+        hooksecurefunc(module, "RefreshMeter", function()
+            SM:RefreshEllesmereDamageMeter()
+        end)
+    end
+end
+
 function SM:InstallEllesmereNameProvider()
     local ui = _G.EllesmereUI
     local module = ui and ui._ModuleNS and ui._ModuleNS.EllesmereUIUnitFrames
@@ -205,6 +236,8 @@ function SM:RefreshCompat()
     self:RefreshDandersFrames()
     self:RefreshEllesmereUI()
     self:RefreshNameplates()
+    self:InstallEllesmereDamageMeterProvider()
+    self:RefreshEllesmereDamageMeter()
 end
 
 local loader = CreateFrame("Frame")
@@ -218,7 +251,7 @@ loader:SetScript("OnEvent", function(_, event, addon)
         C_Timer.After(0, function() SM:TrackNameplateUnit(addon) end)
         return
     end
-    if addon == "DandersFrames" or addon == "EllesmereUI" or addon == "EllesmereUINameplates" or addon == "Plater" then
+    if addon == "DandersFrames" or addon == "EllesmereUI" or addon == "EllesmereUINameplates" or addon == "EllesmereUIDamageMeters" or addon == "Plater" then
         C_Timer.After(0, function() SM:Refresh() end)
     end
 end)
