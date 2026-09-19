@@ -55,31 +55,69 @@ function SM:MaskText(text)
     return text
 end
 
-function SM:MaskFrameText(frame)
-    if not frame or not frame.GetRegions then return end
-    for _, region in ipairs({ frame:GetRegions() }) do
-        if region:GetObjectType() == "FontString" and region.GetText and region.SetText then
-            local original = region:GetText()
-            if not issecretvalue or not issecretvalue(original) then
-                local masked = self:MaskText(original)
-                if masked ~= original then region:SetText(masked) end
-            end
-        end
-    end
-end
-
-function SM:MaskVisibleText()
-    -- Midnight can return secret booleans for arbitrary Blizzard frames.
-    -- Enumerating every frame is therefore unsafe; only explicit unit frames
-    -- and tooltip callbacks are processed by ShadowMask.
+local function setTooltipTitle(tooltip)
+    if not tooltip or not tooltip.GetUnit then return end
+    local _, unit = tooltip:GetUnit()
+    if issecretvalue and issecretvalue(unit) then return end
+    if not unit then return end
+    local name = UnitName(unit)
+    if issecretvalue and issecretvalue(name) then return end
+    if not name then return end
+    local title = tooltip:GetName() and _G[tooltip:GetName() .. "TextLeft1"]
+    if title and title.SetText then title:SetText(SM:AliasForName(name)) end
 end
 
 local function maskTooltip(tooltip)
-    local _, unit = tooltip:GetUnit()
-    if unit then SM:ObserveUnit(unit) end
-    SM:MaskFrameText(tooltip)
+    setTooltipTitle(tooltip)
+    -- Blizzard may populate the title after the post callback for some tooltip skins.
+    C_Timer.After(0, function() setTooltipTitle(tooltip) end)
+end
+
+function SM:MaskCharacterFrame()
+    if CharacterFrame and CharacterFrame.SetTitle and self.db and self.db.enabled then
+        CharacterFrame:SetTitle(self:SanitizeAlias(self.db.ownAlias, "Streamer"))
+    end
+end
+
+function SM:MaskInspectFrame()
+    if not InspectFrame or not InspectFrame.SetTitle then return end
+    local unit = InspectFrame.unit
+    if issecretvalue and issecretvalue(unit) then return end
+    if not unit then return end
+    local name = UnitName(unit)
+    if issecretvalue and issecretvalue(name) then return end
+    if name then InspectFrame:SetTitle(self:AliasForName(name)) end
+end
+
+function SM:RefreshPrivacyPanels()
+    self:MaskCharacterFrame()
+    self:MaskInspectFrame()
+end
+
+function SM:InstallPrivacyHooks()
+    if CharacterFrame and not self.characterHooked then
+        self.characterHooked = true
+        CharacterFrame:HookScript("OnShow", function() SM:MaskCharacterFrame() end)
+        hooksecurefunc(CharacterFrame, "UpdateTitle", function() SM:MaskCharacterFrame() end)
+    end
+    if InspectFrame and not self.inspectHooked then
+        self.inspectHooked = true
+        InspectFrame:HookScript("OnShow", function() SM:MaskInspectFrame() end)
+        if InspectFrame_UnitChanged then
+            hooksecurefunc("InspectFrame_UnitChanged", function() SM:MaskInspectFrame() end)
+        end
+    end
 end
 
 if TooltipDataProcessor and Enum and Enum.TooltipDataType then
     TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.Unit, maskTooltip)
 end
+
+local setup = CreateFrame("Frame")
+setup:RegisterEvent("PLAYER_LOGIN")
+setup:RegisterEvent("ADDON_LOADED")
+setup:SetScript("OnEvent", function(_, event, addon)
+    if event == "PLAYER_LOGIN" or addon == "Blizzard_InspectUI" then
+        C_Timer.After(0, function() SM:InstallPrivacyHooks(); SM:RefreshPrivacyPanels() end)
+    end
+end)

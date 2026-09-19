@@ -23,5 +23,5 @@ function SM:RefreshFrames()
     for index = 1, 40 do
         setUnitText("raid" .. index, _G["CompactRaidFrame" .. index .. "Name"])
     end
-    if self.MaskVisibleText then self:MaskVisibleText() end
+    if self.RefreshPrivacyPanels then self:RefreshPrivacyPanels() end
 end
