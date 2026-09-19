@@ -32,6 +32,8 @@ The DandersFrames adapter also masks the player frame embedded in its party head
 
 EllesmereUI's own unit-name resolver is wrapped so player, target, focus, pet, target-of-target, focus-of-target, and boss frames receive aliases during their normal render pass, without a visible real-name flash.
 
+Hostile player units are deliberately left unchanged in unit frames; only friendly and group units are masked there.
+
 Visible player-name text is also masked in unit tooltips, the character and inspect windows, and Blizzard or addon frames that use regular FontString labels. Global-chat authors are replaced with a generic alias without being cached or stored; the temporary display cache is rebuilt only from currently visible units.
 
 Midnight marks some combat UI text and frame state as protected secret values. ShadowMask deliberately avoids scanning arbitrary Blizzard frames and uses explicit hooks for the character window, inspect window, unit frames, and unit tooltips instead, preventing UI errors while masking supported name displays.

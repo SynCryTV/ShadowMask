@@ -8,6 +8,8 @@ local unitFrames = {
 
 local function setUnitText(unit, fontString)
     if not fontString or not fontString.SetText or not UnitExists(unit) then return end
+    local hostile = UnitCanAttack("player", unit)
+    if (issecretvalue and issecretvalue(hostile)) or hostile then return end
     local name = UnitName(unit)
     if name then fontString:SetText(SM:AliasForName(name)) end
 end

@@ -5,6 +5,8 @@ local function maskFrameName(frame)
     local unit = frame.unit or frame.displayedUnit or frame._euiUnit
     local nameText = frame.nameText or frame.NameText or frame.Name or frame.name
     if unit and nameText and nameText.SetText and UnitExists(unit) then
+        local hostile = UnitCanAttack("player", unit)
+        if (issecretvalue and issecretvalue(hostile)) or hostile then return end
         local name = UnitName(unit)
         if name then nameText:SetText(SM:AliasForName(name)) end
     end
@@ -72,8 +74,9 @@ function SM:InstallEllesmereNameProvider()
     module.ResolveUnitNickname = function(unit)
         local name = UnitName(unit)
         local isPlayer = UnitIsPlayer(unit)
-        if not (issecretvalue and (issecretvalue(name) or issecretvalue(isPlayer)))
-            and name and isPlayer then
+        local hostile = UnitCanAttack("player", unit)
+        if not (issecretvalue and (issecretvalue(name) or issecretvalue(isPlayer) or issecretvalue(hostile)))
+            and name and isPlayer and not hostile then
             return SM:AliasForName(name)
         end
         return original(unit)
