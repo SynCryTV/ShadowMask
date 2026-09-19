@@ -9,6 +9,7 @@ local defaults = {
     maskSelf = true,
     maskGroup = true,
     maskChat = true,
+    hideFriendlyNameplates = true,
     autoDeclineBlocked = true,
     showMinimapButton = true,
     blocked = {},
@@ -100,7 +101,32 @@ function SM:AliasForChatAuthor(name)
     return self:SanitizeAlias(self.db.aliasPrefix, "Player")
 end
 
+local friendlyPlayerNameplateCVars = { "nameplateShowFriendlyPlayers", "nameplateShowFriends" }
+
+function SM:ApplyFriendlyNameplatePrivacy()
+    if not self.db or not SetCVar then return end
+    if InCombatLockdown() then
+        self.friendlyNameplateUpdatePending = true
+        return
+    end
+    self.friendlyNameplateUpdatePending = nil
+    local restore = self.db.friendlyNameplateCVarRestore
+    if self.db.enabled and self.db.hideFriendlyNameplates then
+        restore = restore or {}
+        self.db.friendlyNameplateCVarRestore = restore
+        for _, cvar in ipairs(friendlyPlayerNameplateCVars) do
+            local value = GetCVar and GetCVar(cvar)
+            if value ~= nil and restore[cvar] == nil then restore[cvar] = value end
+            pcall(SetCVar, cvar, 0)
+        end
+    elseif restore then
+        for cvar, value in pairs(restore) do pcall(SetCVar, cvar, value) end
+        self.db.friendlyNameplateCVarRestore = nil
+    end
+end
+
 function SM:Refresh()
+    if self.ApplyFriendlyNameplatePrivacy then self:ApplyFriendlyNameplatePrivacy() end
     if self.RefreshFrames then self:RefreshFrames() end
     if self.RefreshCompat then self:RefreshCompat() end
     if self.RefreshGameTooltip then self:RefreshGameTooltip() end
@@ -157,6 +183,7 @@ eventFrame:RegisterEvent("PLAYER_LOGIN")
 eventFrame:RegisterEvent("GROUP_ROSTER_UPDATE")
 eventFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
 eventFrame:RegisterEvent("PARTY_INVITE_REQUEST")
+eventFrame:RegisterEvent("PLAYER_REGEN_ENABLED")
 eventFrame:SetScript("OnEvent", function(_, event, ...)
     if event == "PLAYER_LOGIN" then
         ShadowMaskDB = ShadowMaskDB or {}
@@ -168,6 +195,8 @@ eventFrame:SetScript("OnEvent", function(_, event, ...)
         SM:InstallChatFilters()
         C_Timer.After(1, function() SM:Refresh() end)
         SM:Print("loaded. Type /sm for commands.")
+    elseif event == "PLAYER_REGEN_ENABLED" and SM.friendlyNameplateUpdatePending then
+        SM:ApplyFriendlyNameplatePrivacy()
     elseif event == "PARTY_INVITE_REQUEST" and SM.db and SM.db.enabled and SM.db.autoDeclineBlocked then
         local inviter = ...
         if SM:IsBlocked(inviter) and not InCombatLockdown() then
