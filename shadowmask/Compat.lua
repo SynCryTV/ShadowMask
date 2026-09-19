@@ -7,6 +7,8 @@ local function maskFrameName(frame)
     if unit and nameText and nameText.SetText and UnitExists(unit) then
         local hostile = UnitCanAttack("player", unit)
         if (issecretvalue and issecretvalue(hostile)) or hostile then return end
+        local isPlayer = UnitIsPlayer(unit)
+        if (issecretvalue and issecretvalue(isPlayer)) or not isPlayer then return end
         local name = UnitName(unit)
         if name then nameText:SetText(SM:AliasForName(name)) end
     end

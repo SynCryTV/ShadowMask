@@ -66,6 +66,9 @@ function SM:MaskInspectFrame()
     local unit = InspectFrame.unit
     if issecretvalue and issecretvalue(unit) then return end
     if not unit then return end
+    local isPlayer = UnitIsPlayer(unit)
+    if issecretvalue and issecretvalue(isPlayer) then return end
+    if not isPlayer then return end
     local name = UnitName(unit)
     if issecretvalue and issecretvalue(name) then return end
     if name then InspectFrame:SetTitle(self:AliasForName(name)) end
