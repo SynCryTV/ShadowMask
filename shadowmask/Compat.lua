@@ -184,6 +184,56 @@ function SM:TrackNameplateUnit(unit)
     if frame then self:TrackNameplateText(frame.name or frame.unitName, unit) end
 end
 
+function SM:RestoreTargetNameplateText()
+    if not self.hiddenTargetNameTexts then return end
+    for fontString in pairs(self.hiddenTargetNameTexts) do
+        if fontString and fontString.SetAlpha then pcall(fontString.SetAlpha, fontString, 1) end
+    end
+    self.hiddenTargetNameTexts = nil
+end
+
+function SM:HideTargetNameplateText(fontString)
+    if not fontString or not fontString.SetAlpha then return end
+    self.hiddenTargetNameTexts = self.hiddenTargetNameTexts or setmetatable({}, { __mode = "k" })
+    self.hiddenTargetNameTexts[fontString] = true
+    pcall(fontString.SetAlpha, fontString, 0)
+end
+
+function SM:RefreshTargetPlayerNameplatePrivacy()
+    self:RestoreTargetNameplateText()
+    if not self.db or not self.db.enabled or not self.db.hideFriendlyNameplates or not UnitExists("target") then return end
+    local isPlayer = UnitIsPlayer("target")
+    if (issecretvalue and issecretvalue(isPlayer)) or not isPlayer then return end
+
+    -- Blizzard shows a selected player's name again even with the name CVar
+    -- disabled. Hide only the text regions, keeping health/cast/target visuals.
+    local plate = C_NamePlate and C_NamePlate.GetNamePlateForUnit and C_NamePlate.GetNamePlateForUnit("target")
+    local frame = plate and plate.UnitFrame
+    if frame then
+        self:HideTargetNameplateText(frame.name)
+        self:HideTargetNameplateText(frame.unitName)
+        self:HideTargetNameplateText(frame.nameText)
+        self:HideTargetNameplateText(frame.subText1)
+        self:HideTargetNameplateText(frame.subText2)
+    end
+
+    -- Ellesmere's enemy plate is a separate custom frame. Its plate registry
+    -- retains the real unit token, so its name and subtitle can be handled
+    -- directly without scanning arbitrary UI frames.
+    local ui = _G.EllesmereUI
+    local module = ui and ui._ModuleNS and ui._ModuleNS.EllesmereUINameplates
+    for unit, euiPlate in pairs(module and module.plates or {}) do
+        local isTarget = UnitIsUnit(unit, "target")
+        if not (issecretvalue and issecretvalue(isTarget)) and isTarget then
+            self:HideTargetNameplateText(euiPlate.name)
+            self:HideTargetNameplateText(euiPlate.subText1)
+            self:HideTargetNameplateText(euiPlate.subText2)
+            self:HideTargetNameplateText(euiPlate.guild)
+            self:HideTargetNameplateText(euiPlate.guildText)
+        end
+    end
+end
+
 function SM:AliasForDamageMeterGUID(guid)
     if (issecretvalue and issecretvalue(guid)) or type(guid) ~= "string" then return nil end
     local units = { "player" }
@@ -290,6 +340,7 @@ function SM:RefreshCompat()
     self:RefreshDandersFrames()
     self:RefreshEllesmereUI()
     self:RefreshNameplates()
+    self:RefreshTargetPlayerNameplatePrivacy()
     self:InstallEllesmereDamageMeterProvider()
     self:RefreshEllesmereDamageMeter()
 end
