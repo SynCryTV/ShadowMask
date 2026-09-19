@@ -184,21 +184,72 @@ function SM:TrackNameplateUnit(unit)
     if frame then self:TrackNameplateText(frame.name or frame.unitName, unit) end
 end
 
+function SM:AliasForDamageMeterGUID(guid)
+    if (issecretvalue and issecretvalue(guid)) or type(guid) ~= "string" then return nil end
+    local units = { "player" }
+    if IsInRaid() then
+        for index = 1, GetNumGroupMembers() do units[#units + 1] = "raid" .. index end
+    elseif IsInGroup() then
+        for index = 1, GetNumSubgroupMembers() do units[#units + 1] = "party" .. index end
+    end
+    for _, unit in ipairs(units) do
+        local unitGuid = UnitGUID(unit)
+        if not (issecretvalue and issecretvalue(unitGuid)) and unitGuid == guid then
+            local name = UnitName(unit)
+            if not (issecretvalue and issecretvalue(name)) and name then
+                return self:AliasForName(name)
+            end
+        end
+    end
+end
+
+function SM:MaskEllesmereDamageMeterBar(module, bar)
+    if not self.db or not self.db.enabled or not bar or self.damageMeterWriting and self.damageMeterWriting[bar] then return end
+    local src = bar._src
+    local class = src and src.classFilename
+    -- Ellesmere keeps classFilename public while name and GUID become secret
+    -- in combat. This identifies player rows without ever inspecting a name.
+    if (issecretvalue and issecretvalue(class)) or type(class) ~= "string" or not RAID_CLASS_COLORS[class] then return end
+
+    local guid = src.sourceGUID
+    if issecretvalue and issecretvalue(guid) then guid = nil end
+    if not guid and module._ResolveGroupGUID then guid = module._ResolveGroupGUID(src) end
+    local alias = self:AliasForDamageMeterGUID(guid)
+    local isLocal = src.isLocalPlayer
+    if not alias and not (issecretvalue and issecretvalue(isLocal)) and isLocal == true then
+        alias = self:SanitizeAlias(self.db.ownAlias, "Streamer")
+    end
+    -- When two group members share the same class/spec the restricted API
+    -- cannot resolve a GUID in combat. Use a generic alias rather than leak.
+    alias = alias or self:SanitizeAlias(self.db.aliasPrefix, "Player")
+    if not bar.label or not bar.label.SetText then return end
+    self.damageMeterWriting = self.damageMeterWriting or setmetatable({}, { __mode = "k" })
+    self.damageMeterWriting[bar] = true
+    bar.label:SetText(alias)
+    self.damageMeterWriting[bar] = nil
+end
+
+function SM:TrackEllesmereDamageMeterBar(module, bar)
+    if not bar or not bar.label or not bar.label.SetText then return end
+    self.damageMeterLabels = self.damageMeterLabels or setmetatable({}, { __mode = "k" })
+    if not self.damageMeterLabels[bar.label] then
+        self.damageMeterLabels[bar.label] = true
+        -- RefreshMeter renders every combat tick; replacement therefore runs
+        -- in that same draw pass instead of waiting for combat to end.
+        hooksecurefunc(bar.label, "SetText", function()
+            SM:MaskEllesmereDamageMeterBar(module, bar)
+        end)
+    end
+    self:MaskEllesmereDamageMeterBar(module, bar)
+end
+
 function SM:RefreshEllesmereDamageMeter()
     local ui = _G.EllesmereUI
     local module = ui and ui._ModuleNS and ui._ModuleNS.EllesmereUIDamageMeters
     if not module then return end
     for _, window in ipairs(module._windows or {}) do
         for _, bar in ipairs(window.rowPool or {}) do
-            local src = bar._src
-            local guid = src and src.sourceGUID
-            local name = src and src.name
-            if not (issecretvalue and issecretvalue(guid))
-                and type(guid) == "string" and guid:match("^Player%-")
-                and not (issecretvalue and issecretvalue(name))
-                and name and bar.label and bar.label.SetText then
-                bar.label:SetText(self:AliasForName(name))
-            end
+            self:TrackEllesmereDamageMeterBar(module, bar)
         end
     end
 end
