@@ -143,8 +143,11 @@ function SM:TrackNameplateText(fontString, unit)
     self.nameplateTextUnits[fontString] = unit
     if not self.nameplateNameHooked[fontString] then
         self.nameplateNameHooked[fontString] = true
-        hooksecurefunc(fontString, "SetText", function(text)
-            SM:MaskTrackedNameplateText(text)
+        -- SetText is called again whenever Blizzard updates a target plate.
+        -- Keep the tracked FontString in the closure: the hook argument is the
+        -- new text, not a reliable frame reference.
+        hooksecurefunc(fontString, "SetText", function()
+            SM:MaskTrackedNameplateText(fontString)
         end)
     end
     self:MaskTrackedNameplateText(fontString)
