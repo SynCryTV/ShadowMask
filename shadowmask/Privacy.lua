@@ -76,6 +76,18 @@ function SM:RefreshPrivacyPanels()
     self:MaskInspectFrame()
 end
 
+function SM:MaskGameTooltipUnit(tooltip)
+    local _, unit = tooltip:GetUnit()
+    if issecretvalue and issecretvalue(unit) then return end
+    if not unit then return end
+    local isPlayer = UnitIsPlayer(unit)
+    if issecretvalue and issecretvalue(isPlayer) then return end
+    if not isPlayer then return end
+    local name = tooltip:GetName()
+    local title = name and _G[name .. "TextLeft1"]
+    if title and title.SetText then title:SetText("") end
+end
+
 function SM:InstallPrivacyHooks()
     if CharacterFrame and not self.characterHooked then
         self.characterHooked = true
@@ -88,6 +100,14 @@ function SM:InstallPrivacyHooks()
         if InspectFrame_UnitChanged then
             hooksecurefunc("InspectFrame_UnitChanged", function() SM:MaskInspectFrame() end)
         end
+    end
+    if GameTooltip and not self.gameTooltipHooked then
+        self.gameTooltipHooked = true
+        -- EllesmereUI calls GameTooltip:SetUnit(frame._euiUnit) on hover and
+        -- refreshes it repeatedly. This hook runs after each of those calls.
+        GameTooltip:HookScript("OnTooltipSetUnit", function(tooltip)
+            SM:MaskGameTooltipUnit(tooltip)
+        end)
     end
 end
 
