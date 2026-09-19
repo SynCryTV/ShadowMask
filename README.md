@@ -38,6 +38,8 @@ Midnight marks some combat UI text and frame state as protected secret values. S
 
 The complete UnitName line is removed from player tooltips before they render. NPC tooltip titles are never changed.
 
+For EllesmereUI group-frame tooltips, ShadowMask also resolves the active group unit through the tooltip GUID when the normal unit token is protected.
+
 The level of an incoming inviter is not reliably supplied by the WoW invitation event. Therefore, the initial version can automatically decline names already on the block list; a low-level rule can be added only for characters whose level has been observed and cached while grouped.
 
 ## Release workflow

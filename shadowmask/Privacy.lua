@@ -107,6 +107,36 @@ if TooltipDataProcessor and Enum and Enum.TooltipDataLineType then
     TooltipDataProcessor.AddLinePreCall(Enum.TooltipDataLineType.UnitName, suppressPlayerTooltipName)
 end
 
+local function findGroupPlayerByGUID(guid)
+    if issecretvalue and issecretvalue(guid) then return nil end
+    if not guid then return nil end
+    local tokens = { "player" }
+    if IsInRaid() then
+        for index = 1, GetNumGroupMembers() do tokens[#tokens + 1] = "raid" .. index end
+    else
+        for index = 1, GetNumSubgroupMembers() do tokens[#tokens + 1] = "party" .. index end
+    end
+    for _, unit in ipairs(tokens) do
+        local unitGUID = UnitGUID(unit)
+        if not (issecretvalue and issecretvalue(unitGUID)) and unitGUID == guid then
+            return unit
+        end
+    end
+end
+
+local function suppressGuidResolvedTooltipName(tooltip, data)
+    local unit = data and findGroupPlayerByGUID(data.guid)
+    if not unit then return end
+    local title = tooltip:GetName() and _G[tooltip:GetName() .. "TextLeft1"]
+    if title and title.SetText then title:SetText("") end
+end
+
+if TooltipDataProcessor and Enum and Enum.TooltipDataType then
+    -- EllesmereUI group-frame tooltips can expose a secret unit token while
+    -- retaining a clean GUID. Resolve only our active group units from that GUID.
+    TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.Unit, suppressGuidResolvedTooltipName)
+end
+
 local setup = CreateFrame("Frame")
 setup:RegisterEvent("PLAYER_LOGIN")
 setup:RegisterEvent("ADDON_LOADED")
