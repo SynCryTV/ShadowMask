@@ -107,6 +107,8 @@ local friendlyPlayerNameplateCVars = {
     -- EllesmereUI name-only mode explicitly enables this separate WoW CVar.
     "UnitNameFriendlyPlayerName",
     "nameplateShowOnlyNameForFriendlyPlayerUnits",
+    -- Opposite-faction players use a separate Blizzard name display channel.
+    "UnitNameEnemyPlayerName",
 }
 
 function SM:ApplyEllesmereFriendlyNameplatePrivacy(isHiding)
