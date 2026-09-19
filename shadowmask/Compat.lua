@@ -118,6 +118,60 @@ function SM:InstallEllesmereRaidFrameProvider()
     end
 end
 
+function SM:MaskTrackedNameplateText(fontString)
+    local unit = self.nameplateTextUnits and self.nameplateTextUnits[fontString]
+    if not unit or (issecretvalue and issecretvalue(unit)) then return end
+    local hostile = UnitCanAttack("player", unit)
+    if (issecretvalue and issecretvalue(hostile)) or hostile then return end
+    local isPlayer = UnitIsPlayer(unit)
+    if (issecretvalue and issecretvalue(isPlayer)) or not isPlayer then return end
+    local name = UnitName(unit)
+    if issecretvalue and issecretvalue(name) then return end
+    if not name or self.nameplateWriting[fontString] then return end
+    self.nameplateWriting[fontString] = true
+    fontString:SetText(self:AliasForName(name))
+    self.nameplateWriting[fontString] = nil
+end
+
+function SM:TrackNameplateText(fontString, unit)
+    if not fontString or not fontString.SetText or not unit then return end
+    self.nameplateTextUnits = self.nameplateTextUnits or setmetatable({}, { __mode = "k" })
+    self.nameplateWriting = self.nameplateWriting or setmetatable({}, { __mode = "k" })
+    self.nameplateNameHooked = self.nameplateNameHooked or setmetatable({}, { __mode = "k" })
+    self.nameplateTextUnits[fontString] = unit
+    if not self.nameplateNameHooked[fontString] then
+        self.nameplateNameHooked[fontString] = true
+        hooksecurefunc(fontString, "SetText", function(text)
+            SM:MaskTrackedNameplateText(text)
+        end)
+    end
+    self:MaskTrackedNameplateText(fontString)
+end
+
+function SM:RefreshNameplates()
+    -- Blizzard and Plater both expose their live plates through this API.
+    -- Only the known name FontStrings are tracked; there is no global frame scan.
+    if C_NamePlate and C_NamePlate.GetNamePlates then
+        for _, plate in ipairs(C_NamePlate.GetNamePlates() or {}) do
+            local unit = plate.namePlateUnitToken
+                or (plate.UnitFrame and (plate.UnitFrame.namePlateUnitToken or plate.UnitFrame.unit))
+            local frame = plate.UnitFrame
+            if frame then self:TrackNameplateText(frame.name or frame.unitName, unit) end
+        end
+    end
+
+    local ui = _G.EllesmereUI
+    local module = ui and ui._ModuleNS and ui._ModuleNS.EllesmereUINameplates
+    if not module then return end
+    for unit, plate in pairs(module.friendlyPlates or {}) do
+        self:TrackNameplateText(plate.name, unit)
+    end
+    for unit, plate in pairs(module.pendingUnits or {}) do
+        local frame = plate and plate.UnitFrame
+        if frame then self:TrackNameplateText(frame.name or frame.unitName, unit) end
+    end
+end
+
 function SM:InstallEllesmereNameProvider()
     local ui = _G.EllesmereUI
     local module = ui and ui._ModuleNS and ui._ModuleNS.EllesmereUIUnitFrames
@@ -141,12 +195,13 @@ end
 function SM:RefreshCompat()
     self:RefreshDandersFrames()
     self:RefreshEllesmereUI()
+    self:RefreshNameplates()
 end
 
 local loader = CreateFrame("Frame")
 loader:RegisterEvent("ADDON_LOADED")
 loader:SetScript("OnEvent", function(_, _, addon)
-    if addon == "DandersFrames" or addon == "EllesmereUI" then
+    if addon == "DandersFrames" or addon == "EllesmereUI" or addon == "EllesmereUINameplates" or addon == "Plater" then
         C_Timer.After(0, function() SM:Refresh() end)
     end
 end)

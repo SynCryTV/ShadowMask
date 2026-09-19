@@ -2,7 +2,7 @@
 ## Title: ShadowMask
 ## Notes: Streamer privacy: aliases, name masking, and invite filtering.
 ## Author: ShadowMask Contributors
-## Version: 0.1.20
+## Version: 0.1.21
 ## X-Website: https://github.com/SynCryTV/ShadowMask
 ## X-Repository: https://github.com/SynCryTV/ShadowMask
 ## X-Category: Social
