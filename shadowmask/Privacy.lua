@@ -126,7 +126,7 @@ end
 local function suppressGuidResolvedTooltipName(tooltip, data)
     local guid = data and data.guid
     if issecretvalue and issecretvalue(guid) then return end
-    if type(guid) ~= "string" or not guid:match("^Player%-%") then return end
+    if type(guid) ~= "string" or not guid:match("^Player%-") then return end
     -- Some custom unit frames expose no usable unitToken at all. A player
     -- GUID is still clean tooltip data and distinguishes players from NPCs.
     local title = tooltip:GetName() and _G[tooltip:GetName() .. "TextLeft1"]
