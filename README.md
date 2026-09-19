@@ -30,6 +30,8 @@ ShadowMask includes adapters for **DandersFrames** and **EllesmereUI**. It only 
 
 The DandersFrames adapter also masks the player frame embedded in its party header.
 
+EllesmereUI full unit frames (player, target, focus, pet, target-of-target, focus-of-target, and bosses) are read through their public frame names and have their `NameText` labels masked directly.
+
 Visible player-name text is also masked in unit tooltips, the character and inspect windows, and Blizzard or addon frames that use regular FontString labels. Global-chat authors are replaced with a generic alias without being cached or stored; the temporary display cache is rebuilt only from currently visible units.
 
 Midnight marks some combat UI text and frame state as protected secret values. ShadowMask deliberately avoids scanning arbitrary Blizzard frames and uses explicit hooks for the character window, inspect window, unit frames, and unit tooltips instead, preventing UI errors while masking supported name displays.

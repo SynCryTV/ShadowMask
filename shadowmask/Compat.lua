@@ -2,8 +2,8 @@ local _, SM = ...
 
 local function maskFrameName(frame)
     if not frame then return end
-    local unit = frame.unit or frame.displayedUnit
-    local nameText = frame.nameText or frame.Name or frame.name
+    local unit = frame.unit or frame.displayedUnit or frame._euiUnit
+    local nameText = frame.nameText or frame.NameText or frame.Name or frame.name
     if unit and nameText and nameText.SetText and UnitExists(unit) then
         local name = UnitName(unit)
         if name then nameText:SetText(SM:AliasForName(name)) end
@@ -31,6 +31,26 @@ end
 function SM:RefreshEllesmereUI()
     local ui = _G.EllesmereUI
     if not ui then return end
+    -- EllesmereUIUnitFrames exposes full frames as named globals while its
+    -- internal frame registry stays module-local.
+    local fullFrames = {
+        { name = "EllesmereUIUnitFrames_Player", unit = "player" },
+        { name = "EllesmereUIUnitFrames_Target", unit = "target" },
+        { name = "EllesmereUIUnitFrames_Focus", unit = "focus" },
+        { name = "EllesmereUIUnitFrames_TargetTarget", unit = "targettarget" },
+        { name = "EllesmereUIUnitFrames_FocusTarget", unit = "focustarget" },
+        { name = "EllesmereUIUnitFrames_Pet", unit = "pet" },
+    }
+    for _, entry in ipairs(fullFrames) do
+        local frame = _G[entry.name]
+        if frame and not frame._euiUnit then frame._euiUnit = entry.unit end
+        maskFrameName(frame)
+    end
+    for index = 1, 5 do
+        local frame = _G["EllesmereUIUnitFrames_Boss" .. index]
+        if frame and not frame._euiUnit then frame._euiUnit = "boss" .. index end
+        maskFrameName(frame)
+    end
     -- EllesmereUI creates different frame modules based on enabled profile features.
     -- Its public unit frames retain unit/nameText fields; recurse only through its
     -- known module tables and never modify protected frame attributes.
