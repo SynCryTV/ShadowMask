@@ -1,0 +1,16 @@
+## Interface: 120100
+## Title: ShadowMask
+## Notes: Streamer privacy: aliases, name masking, and invite filtering.
+## Author: ShadowMask Contributors
+## Version: 0.1.0
+## X-Website: https://github.com/REPLACE_WITH_OWNER/ShadowMask
+## X-Category: Social
+## SavedVariables: ShadowMaskDB
+## OptionalDeps: EllesmereUI, DandersFrames
+
+Core.lua
+Chat.lua
+Frames.lua
+Compat.lua
+Minimap.lua
+Options.lua

@@ -1,0 +1,117 @@
+local _, SM = ...
+
+local function createCheckBox(parent, label, key, y)
+    local button = CreateFrame("CheckButton", nil, parent, "UICheckButtonTemplate")
+    button:SetPoint("TOPLEFT", 18, y)
+    button.Text:SetText(label)
+    button:SetScript("OnClick", function(self)
+        SM.db[key] = self:GetChecked() and true or false
+        SM:Refresh()
+    end)
+    parent.controls[key] = button
+end
+
+local function createEditBox(parent, label, key, y)
+    local text = parent:CreateFontString(nil, "ARTWORK", "GameFontNormal")
+    text:SetPoint("TOPLEFT", 20, y)
+    text:SetText(label)
+    local box = CreateFrame("EditBox", nil, parent, "InputBoxTemplate")
+    box:SetSize(230, 24)
+    box:SetPoint("TOPLEFT", 20, y - 22)
+    box:SetAutoFocus(false)
+    box:SetScript("OnEnterPressed", function(self)
+        if self:GetText() ~= "" then SM.db[key] = self:GetText(); SM:Refresh() end
+        self:ClearFocus()
+    end)
+    box:SetScript("OnEditFocusLost", function(self)
+        if self:GetText() ~= "" then SM.db[key] = self:GetText(); SM:Refresh() end
+    end)
+    parent.controls[key] = box
+end
+
+local function sortedNames(list)
+    local names = {}
+    for name in pairs(list) do names[#names + 1] = name end
+    table.sort(names)
+    return names
+end
+
+function SM:RefreshOptions()
+    local panel = self.optionsPanel
+    if not panel or not self.db then return end
+    for key, control in pairs(panel.controls) do
+        if control:GetObjectType() == "CheckButton" then control:SetChecked(self.db[key])
+        else control:SetText(self.db[key]) end
+    end
+    panel.blockedList:SetText(table.concat(sortedNames(self.db.blocked), "\n"))
+    panel.trustedList:SetText(table.concat(sortedNames(self.db.trusted), "\n"))
+end
+
+local function createListEditor(panel, title, listName, y)
+    local label = panel:CreateFontString(nil, "ARTWORK", "GameFontNormal")
+    label:SetPoint("TOPLEFT", 340, y)
+    label:SetText(title)
+    local list = CreateFrame("EditBox", nil, panel, "InputBoxTemplate")
+    list:SetMultiLine(true)
+    list:SetAutoFocus(false)
+    list:SetFontObject(ChatFontNormal)
+    list:SetSize(220, 145)
+    list:SetPoint("TOPLEFT", 340, y - 22)
+    list:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
+    panel[listName .. "List"] = list
+    local hint = panel:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
+    hint:SetPoint("TOPLEFT", 340, y - 172)
+    hint:SetText("One character name per line")
+    local save = CreateFrame("Button", nil, panel, "UIPanelButtonTemplate")
+    save:SetSize(100, 24)
+    save:SetPoint("TOPLEFT", 340, y - 194)
+    save:SetText("Save list")
+    save:SetScript("OnClick", function()
+        local result = {}
+        for name in list:GetText():gmatch("[^\r\n]+") do
+            local key = SM:NormalizeName(name)
+            if key then result[key] = true end
+        end
+        SM.db[listName] = result
+        SM:Refresh()
+        SM:RefreshOptions()
+        SM:Print(title .. " saved.")
+    end)
+end
+
+function SM:CreateOptions()
+    if self.optionsPanel then return end
+    local panel = CreateFrame("Frame", "ShadowMaskOptionsPanel", UIParent)
+    panel.name, panel.controls = "ShadowMask", {}
+    self.optionsPanel = panel
+    local title = panel:CreateFontString(nil, "ARTWORK", "GameFontNormalLarge")
+    title:SetPoint("TOPLEFT", 16, -16)
+    title:SetText("ShadowMask")
+    local subtitle = panel:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
+    subtitle:SetPoint("TOPLEFT", 18, -42)
+    subtitle:SetText("Streamer privacy controls. Changes apply immediately.")
+    createCheckBox(panel, "Enable ShadowMask", "enabled", -72)
+    createCheckBox(panel, "Mask own character name", "maskSelf", -102)
+    createCheckBox(panel, "Mask group and unit-frame names", "maskGroup", -132)
+    createCheckBox(panel, "Mask names in chat", "maskChat", -162)
+    createCheckBox(panel, "Automatically decline blocked invitations", "autoDeclineBlocked", -192)
+    createCheckBox(panel, "Show minimap button", "showMinimapButton", -222)
+    createEditBox(panel, "Your stream alias", "ownAlias", -258)
+    createEditBox(panel, "Alias prefix for other characters", "aliasPrefix", -322)
+    createListEditor(panel, "Block list", "blocked", -72)
+    createListEditor(panel, "Trusted names", "trusted", -310)
+    panel:SetScript("OnShow", function() SM:RefreshOptions() end)
+    if Settings and Settings.RegisterCanvasLayoutCategory then
+        local category = Settings.RegisterCanvasLayoutCategory(panel, "ShadowMask")
+        Settings.RegisterAddOnCategory(category)
+        self.settingsCategory = category
+    elseif InterfaceOptions_AddCategory then
+        InterfaceOptions_AddCategory(panel)
+    end
+end
+
+local setup = CreateFrame("Frame")
+setup:RegisterEvent("PLAYER_LOGIN")
+setup:SetScript("OnEvent", function()
+    C_Timer.After(0, function() SM:CreateOptions() end)
+end)
