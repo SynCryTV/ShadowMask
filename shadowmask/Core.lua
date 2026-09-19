@@ -101,7 +101,12 @@ function SM:AliasForChatAuthor(name)
     return self:SanitizeAlias(self.db.aliasPrefix, "Player")
 end
 
-local friendlyPlayerNameplateCVars = { "nameplateShowFriendlyPlayers", "nameplateShowFriends" }
+local friendlyPlayerNameplateCVars = {
+    "nameplateShowFriendlyPlayers",
+    "nameplateShowFriends",
+    -- EllesmereUI name-only mode explicitly enables this separate WoW CVar.
+    "UnitNameFriendlyPlayerName",
+}
 
 function SM:ApplyFriendlyNameplatePrivacy()
     if not self.db or not SetCVar then return end
