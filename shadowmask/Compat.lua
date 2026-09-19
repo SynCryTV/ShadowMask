@@ -192,6 +192,24 @@ function SM:RestoreTargetNameplateText()
     self.hiddenTargetNameTexts = nil
 end
 
+function SM:RestoreTargetNameplates()
+    if not self.hiddenTargetNameplates then return end
+    for frame, alpha in pairs(self.hiddenTargetNameplates) do
+        if frame and frame.SetAlpha then pcall(frame.SetAlpha, frame, alpha) end
+    end
+    self.hiddenTargetNameplates = nil
+end
+
+function SM:HideTargetNameplate(frame)
+    if not frame or not frame.SetAlpha then return end
+    self.hiddenTargetNameplates = self.hiddenTargetNameplates or setmetatable({}, { __mode = "k" })
+    if self.hiddenTargetNameplates[frame] == nil then
+        local alpha = frame.GetAlpha and frame:GetAlpha() or 1
+        self.hiddenTargetNameplates[frame] = (issecretvalue and issecretvalue(alpha)) and 1 or alpha
+    end
+    pcall(frame.SetAlpha, frame, 0)
+end
+
 function SM:HideTargetNameplateText(fontString)
     if not fontString or not fontString.SetAlpha then return end
     self.hiddenTargetNameTexts = self.hiddenTargetNameTexts or setmetatable({}, { __mode = "k" })
@@ -201,6 +219,7 @@ end
 
 function SM:RefreshTargetPlayerNameplatePrivacy()
     self:RestoreTargetNameplateText()
+    self:RestoreTargetNameplates()
     if not self.db or not self.db.enabled or not self.db.hideFriendlyNameplates or not UnitExists("target") then return end
     local isPlayer = UnitIsPlayer("target")
     if (issecretvalue and issecretvalue(isPlayer)) or not isPlayer then return end
@@ -209,6 +228,8 @@ function SM:RefreshTargetPlayerNameplatePrivacy()
     -- disabled. Hide only the text regions, keeping health/cast/target visuals.
     local plate = C_NamePlate and C_NamePlate.GetNamePlateForUnit and C_NamePlate.GetNamePlateForUnit("target")
     local frame = plate and plate.UnitFrame
+    self:HideTargetNameplate(plate)
+    self:HideTargetNameplate(frame)
     if frame then
         self:HideTargetNameplateText(frame.name)
         self:HideTargetNameplateText(frame.unitName)
@@ -225,6 +246,7 @@ function SM:RefreshTargetPlayerNameplatePrivacy()
     for unit, euiPlate in pairs(module and module.plates or {}) do
         local isTarget = UnitIsUnit(unit, "target")
         if not (issecretvalue and issecretvalue(isTarget)) and isTarget then
+            self:HideTargetNameplate(euiPlate)
             self:HideTargetNameplateText(euiPlate.name)
             self:HideTargetNameplateText(euiPlate.subText1)
             self:HideTargetNameplateText(euiPlate.subText2)
