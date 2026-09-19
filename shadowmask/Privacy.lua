@@ -104,8 +104,9 @@ function SM:InstallPrivacyHooks()
     if GameTooltip and not self.gameTooltipHooked then
         self.gameTooltipHooked = true
         -- EllesmereUI calls GameTooltip:SetUnit(frame._euiUnit) on hover and
-        -- refreshes it repeatedly. This hook runs after each of those calls.
-        GameTooltip:HookScript("OnTooltipSetUnit", function(tooltip)
+        -- refreshes it repeatedly. SetUnit is a method, not a HookScript event
+        -- on current Retail clients, so hook it directly after its native work.
+        hooksecurefunc(GameTooltip, "SetUnit", function(tooltip)
             SM:MaskGameTooltipUnit(tooltip)
         end)
     end
