@@ -69,8 +69,6 @@ end
 
 local function maskTooltip(tooltip)
     setTooltipTitle(tooltip)
-    -- Blizzard may populate the title after the post callback for some tooltip skins.
-    C_Timer.After(0, function() setTooltipTitle(tooltip) end)
 end
 
 function SM:MaskCharacterFrame()
