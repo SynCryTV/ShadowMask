@@ -11,8 +11,7 @@ function SM:FilterChat(_, _, message, author, ...)
     if not self.db or not self.db.enabled or not self.db.maskChat then return false end
     if author and self:IsBlocked(author) then return true end
     if not author then return false end
-    if self.ObserveName then self:ObserveName(author) end
-    local alias = self:AliasForName(author)
+    local alias = self:AliasForChatAuthor(author)
     if alias == author then return false end
     -- The author argument controls Blizzard's chat header. Replacing text as well
     -- catches messages that repeat a character name in their body.

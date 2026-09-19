@@ -5,6 +5,7 @@ local function escapePattern(text)
 end
 
 function SM:ObserveName(name, realm)
+    if issecretvalue and (issecretvalue(name) or issecretvalue(realm)) then return end
     if not name or name == "" then return end
     self.knownNames = self.knownNames or {}
     self.knownNames[name] = self:AliasForName(name)
@@ -15,6 +16,7 @@ function SM:ObserveName(name, realm)
 end
 
 function SM:ObserveUnit(unit)
+    if issecretvalue and issecretvalue(unit) then return end
     if unit and UnitExists(unit) and UnitIsPlayer(unit) then
         local name, realm = UnitName(unit)
         self:ObserveName(name, realm)
@@ -22,6 +24,11 @@ function SM:ObserveUnit(unit)
 end
 
 function SM:RefreshKnownNames()
+    -- This cache is intentionally rebuilt from currently visible units. It is
+    -- never written to SavedVariables and cannot grow from global chat traffic.
+    self.knownNames = {}
+    self.aliases = {}
+    self.aliasCount = 0
     self:ObserveUnit("player")
     self:ObserveUnit("target")
     self:ObserveUnit("focus")
@@ -29,25 +36,10 @@ function SM:RefreshKnownNames()
     if InspectFrame and InspectFrame.unit then self:ObserveUnit(InspectFrame.unit) end
     for index = 1, 4 do self:ObserveUnit("party" .. index) end
     for index = 1, 40 do self:ObserveUnit("raid" .. index) end
-    local now = GetTime()
-    if not self.nextSocialScan or now >= self.nextSocialScan then
-        self.nextSocialScan = now + 10
-        if IsInGuild and IsInGuild() and GetNumGuildMembers and GetGuildRosterInfo then
-            for index = 1, GetNumGuildMembers() do
-                local name = GetGuildRosterInfo(index)
-                self:ObserveName(name)
-            end
-        end
-        if C_FriendList and C_FriendList.GetNumFriends and C_FriendList.GetFriendInfoByIndex then
-            for index = 1, C_FriendList.GetNumFriends() do
-                local info = C_FriendList.GetFriendInfoByIndex(index)
-                if info then self:ObserveName(info.name) end
-            end
-        end
-    end
 end
 
 function SM:MaskText(text)
+    if issecretvalue and issecretvalue(text) then return text end
     if not self.db or not self.db.enabled or type(text) ~= "string" or text == "" then
         return text
     end
@@ -68,8 +60,10 @@ function SM:MaskFrameText(frame)
     for _, region in ipairs({ frame:GetRegions() }) do
         if region:GetObjectType() == "FontString" and region.GetText and region.SetText then
             local original = region:GetText()
-            local masked = self:MaskText(original)
-            if masked ~= original then region:SetText(masked) end
+            if not issecretvalue or not issecretvalue(original) then
+                local masked = self:MaskText(original)
+                if masked ~= original then region:SetText(masked) end
+            end
         end
     end
 end

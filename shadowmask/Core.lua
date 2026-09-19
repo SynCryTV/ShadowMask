@@ -24,6 +24,7 @@ local function copyDefaults(target, source)
 end
 
 function SM:NormalizeName(name)
+    if issecretvalue and issecretvalue(name) then return nil end
     if not name or name == "" then return nil end
     return (name:gsub("%s*%-%s*[^%s]+$", "")):lower()
 end
@@ -44,10 +45,11 @@ function SM:IsBlocked(name)
 end
 
 function SM:AliasForName(name)
+    if issecretvalue and issecretvalue(name) then return name end
     if not self.db.enabled or not name or name == "" then return name end
     local bareName = name:gsub("%s*%-%s*[^%s]+$", "")
     local ownName = UnitName("player")
-    if self.db.maskSelf and ownName and bareName:lower() == ownName:lower() then
+    if self.db.maskSelf and ownName and (not issecretvalue or not issecretvalue(ownName)) and bareName:lower() == ownName:lower() then
         return self:SanitizeAlias(self.db.ownAlias, "Streamer")
     end
     if self:IsTrusted(bareName) then return name end
@@ -62,6 +64,20 @@ function SM:AliasForName(name)
         self.aliases[key] = string.format("%s%02d", prefix, self.aliasCount)
     end
     return self.aliases[key]
+end
+
+function SM:AliasForChatAuthor(name)
+    if issecretvalue and issecretvalue(name) then return name end
+    if not self.db or not self.db.enabled or not name then return name end
+    local bareName = name:gsub("%s*%-%s*[^%s]+$", "")
+    local ownName = UnitName("player")
+    if self.db.maskSelf and ownName and (not issecretvalue or not issecretvalue(ownName)) and bareName:lower() == ownName:lower() then
+        return self:SanitizeAlias(self.db.ownAlias, "Streamer")
+    end
+    if self:IsTrusted(bareName) then return name end
+    -- Chat can contain thousands of unique authors. Never allocate an alias
+    -- entry for it; a generic label is enough to conceal the sender.
+    return self:SanitizeAlias(self.db.aliasPrefix, "Player")
 end
 
 function SM:Refresh()
