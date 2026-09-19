@@ -56,7 +56,7 @@ function SM:MaskText(text)
 end
 
 function SM:MaskFrameText(frame)
-    if not frame or not frame.GetRegions or not frame:IsVisible() then return end
+    if not frame or not frame.GetRegions then return end
     for _, region in ipairs({ frame:GetRegions() }) do
         if region:GetObjectType() == "FontString" and region.GetText and region.SetText then
             local original = region:GetText()
@@ -69,12 +69,9 @@ function SM:MaskFrameText(frame)
 end
 
 function SM:MaskVisibleText()
-    if not self.db or not self.db.enabled then return end
-    local frame = EnumerateFrames()
-    while frame do
-        self:MaskFrameText(frame)
-        frame = EnumerateFrames(frame)
-    end
+    -- Midnight can return secret booleans for arbitrary Blizzard frames.
+    -- Enumerating every frame is therefore unsafe; only explicit unit frames
+    -- and tooltip callbacks are processed by ShadowMask.
 end
 
 local function maskTooltip(tooltip)
