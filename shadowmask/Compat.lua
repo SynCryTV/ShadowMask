@@ -194,10 +194,13 @@ end
 
 function SM:RestoreTargetNameplates()
     if not self.hiddenTargetNameplates then return end
-    for frame, alpha in pairs(self.hiddenTargetNameplates) do
+    local hidden = self.hiddenTargetNameplates
+    -- Clear the marker before restoring alpha so our SetAlpha hook does not
+    -- immediately force a released (formerly targeted) plate back to zero.
+    self.hiddenTargetNameplates = nil
+    for frame, alpha in pairs(hidden) do
         if frame and frame.SetAlpha then pcall(frame.SetAlpha, frame, alpha) end
     end
-    self.hiddenTargetNameplates = nil
 end
 
 function SM:HideTargetNameplate(frame)
@@ -235,6 +238,27 @@ function SM:HideTargetNameplateText(fontString)
     pcall(fontString.SetAlpha, fontString, 0)
 end
 
+function SM:HideTargetPlayerNameplateForUnit(unit)
+    if not unit or not self.db or not self.db.enabled or not UnitExists("target") then return end
+    local isTarget, isPlayer = UnitIsUnit(unit, "target"), UnitIsPlayer("target")
+    if (issecretvalue and (issecretvalue(isTarget) or issecretvalue(isPlayer))) or not isTarget or not isPlayer then return end
+
+    -- This gets the exact plate that NAME_PLATE_UNIT_ADDED just created.  It
+    -- covers the selected name-only plate that may not be returned for the
+    -- generic "target" lookup until the next render update.
+    local plate = C_NamePlate and C_NamePlate.GetNamePlateForUnit and C_NamePlate.GetNamePlateForUnit(unit, true)
+    local frame = plate and (plate.UnitFrame or plate.unitFrame)
+    self:HideTargetNameplate(plate)
+    self:HideTargetNameplate(frame)
+    if frame then
+        self:HideTargetNameplateText(frame.name)
+        self:HideTargetNameplateText(frame.unitName)
+        self:HideTargetNameplateText(frame.nameText)
+        self:HideTargetNameplateText(frame.subText1)
+        self:HideTargetNameplateText(frame.subText2)
+    end
+end
+
 function SM:RefreshTargetPlayerNameplatePrivacy()
     self:RestoreTargetNameplateText()
     self:RestoreTargetNameplates()
@@ -246,19 +270,9 @@ function SM:RefreshTargetPlayerNameplatePrivacy()
     if (issecretvalue and issecretvalue(isPlayer)) or not isPlayer then return end
 
     -- Blizzard shows a selected player's name again even with the name CVar
-    -- disabled. Hide only the text regions, keeping health/cast/target visuals.
-    local safeContext = issecure and issecure() or false
-    local plate = C_NamePlate and C_NamePlate.GetNamePlateForUnit and C_NamePlate.GetNamePlateForUnit("target", safeContext)
-    local frame = plate and (plate.UnitFrame or plate.unitFrame)
-    self:HideTargetNameplate(plate)
-    self:HideTargetNameplate(frame)
-    if frame then
-        self:HideTargetNameplateText(frame.name)
-        self:HideTargetNameplateText(frame.unitName)
-        self:HideTargetNameplateText(frame.nameText)
-        self:HideTargetNameplateText(frame.subText1)
-        self:HideTargetNameplateText(frame.subText2)
-    end
+    -- disabled. The target may be assigned to a UnitFrame on the next render
+    -- update; the exact NAME_PLATE_UNIT_ADDED path below covers that case.
+    self:HideTargetPlayerNameplateForUnit("target")
 
     -- Ellesmere's enemy plate is a separate custom frame. Its plate registry
     -- retains the real unit token, so its name and subtitle can be handled
@@ -276,6 +290,14 @@ function SM:RefreshTargetPlayerNameplatePrivacy()
             self:HideTargetNameplateText(euiPlate.guildText)
         end
     end
+end
+
+function SM:RefreshTargetPlayerNameplatePrivacyDeferred()
+    self:RefreshTargetPlayerNameplatePrivacy()
+    -- Blizzard may assign the selected player's UnitFrame one render later.
+    -- Recheck the same explicit target without scanning arbitrary frames.
+    C_Timer.After(0.05, function() SM:RefreshTargetPlayerNameplatePrivacy() end)
+    C_Timer.After(0.20, function() SM:RefreshTargetPlayerNameplatePrivacy() end)
 end
 
 function SM:AliasForDamageMeterGUID(guid)
@@ -413,7 +435,10 @@ loader:SetScript("OnEvent", function(_, event, addon)
         -- Friendly player plates are intentionally omitted from some
         -- GetNamePlates() results. Resolve this exact WoW unit after all
         -- nameplate addons have completed their own add handler.
-        C_Timer.After(0, function() SM:TrackNameplateUnit(addon) end)
+        C_Timer.After(0, function()
+            SM:TrackNameplateUnit(addon)
+            SM:HideTargetPlayerNameplateForUnit(addon)
+        end)
         return
     end
     if addon == "DandersFrames" or addon == "EllesmereUI" or addon == "EllesmereUINameplates" or addon == "EllesmereUIDamageMeters" or addon == "Plater" then

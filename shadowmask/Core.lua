@@ -10,9 +10,10 @@ local defaults = {
     maskGroup = true,
     maskChat = true,
     hideFriendlyNameplates = true,
-    autoDeclineBlocked = true,
+    blockLowLevelWhispers = true,
+    blockLowLevelInvites = true,
+    blockDuels = true,
     showMinimapButton = true,
-    blocked = {},
     trusted = {},
 }
 
@@ -38,11 +39,6 @@ end
 function SM:IsTrusted(name)
     local key = self:NormalizeName(name)
     return key and self.db.trusted[key]
-end
-
-function SM:IsBlocked(name)
-    local key = self:NormalizeName(name)
-    return key and self.db.blocked[key]
 end
 
 function SM:IsActiveGroupMemberName(name)
@@ -168,6 +164,30 @@ function SM:Refresh()
     if self.UpdateMinimapButton then self:UpdateMinimapButton() end
 end
 
+-- Levels are kept only for the current session and only by GUID.  This avoids
+-- building a name database from chat while still allowing known low-level
+-- characters to be filtered.
+function SM:RememberUnitLevel(unit)
+    if not unit or not UnitExists(unit) then return end
+    local guid, level = UnitGUID(unit), UnitLevel(unit)
+    if (issecretvalue and (issecretvalue(guid) or issecretvalue(level)))
+        or type(guid) ~= "string" or type(level) ~= "number" or level <= 0 then return end
+    self.knownLevels = self.knownLevels or {}
+    self.knownLevels[guid] = level
+end
+
+function SM:IsKnownLowLevel(guid)
+    if (issecretvalue and issecretvalue(guid)) or type(guid) ~= "string" then return false end
+    return self.knownLevels and self.knownLevels[guid] and self.knownLevels[guid] < 21
+end
+
+function SM:RememberVisibleUnitLevels()
+    self:RememberUnitLevel("target")
+    self:RememberUnitLevel("focus")
+    local prefix, count = IsInRaid() and "raid" or "party", IsInRaid() and GetNumGroupMembers() or GetNumSubgroupMembers()
+    for index = 1, count do self:RememberUnitLevel(prefix .. index) end
+end
+
 function SM:Print(message)
     print("|cff8b5cf6ShadowMask|r " .. message)
 end
@@ -192,14 +212,11 @@ SlashCmdList.SHADOWMASK = function(message)
         SM.db.enabled = not SM.db.enabled
         SM:Refresh()
         SM:Print(SM.db.enabled and "enabled." or "disabled.")
-    elseif command == "block" then
-        SM:AddName("blocked", rest)
     elseif command == "trust" then
         SM:AddName("trusted", rest)
-    elseif command == "unblock" or command == "untrust" then
+    elseif command == "untrust" then
         local key = SM:NormalizeName(rest)
-        local list = command == "unblock" and "blocked" or "trusted"
-        if key then SM.db[list][key] = nil; SM:Refresh(); SM:Print(rest .. " removed.") end
+        if key then SM.db.trusted[key] = nil; SM:Refresh(); SM:Print(rest .. " removed.") end
     elseif command == "alias" and rest ~= "" then
         SM.db.ownAlias = SM:SanitizeAlias(rest, "Streamer")
         SM:Refresh()
@@ -209,7 +226,7 @@ SlashCmdList.SHADOWMASK = function(message)
     elseif command == "minimap" then
         SM:ToggleMinimapButton()
     else
-        SM:Print("/sm options | minimap | toggle | block <name> | trust <name> | unblock <name> | untrust <name> | alias <text>")
+        SM:Print("/sm options | minimap | toggle | trust <name> | untrust <name> | alias <text>")
     end
 end
 
@@ -219,27 +236,43 @@ eventFrame:RegisterEvent("GROUP_ROSTER_UPDATE")
 eventFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
 eventFrame:RegisterEvent("PLAYER_TARGET_CHANGED")
 eventFrame:RegisterEvent("PARTY_INVITE_REQUEST")
+eventFrame:RegisterEvent("DUEL_REQUESTED")
 eventFrame:RegisterEvent("PLAYER_REGEN_ENABLED")
 eventFrame:SetScript("OnEvent", function(_, event, ...)
     if event == "PLAYER_LOGIN" then
         ShadowMaskDB = ShadowMaskDB or {}
         copyDefaults(ShadowMaskDB, defaults)
         SM.db = ShadowMaskDB
+        -- Remove the retired persistent block list; player names are never
+        -- collected or stored by ShadowMask.
+        SM.db.blocked, SM.db.autoDeclineBlocked = nil, nil
         SM.db.ownAlias = SM:SanitizeAlias(SM.db.ownAlias, "Streamer")
         SM.db.aliasPrefix = SM:SanitizeAlias(SM.db.aliasPrefix, "Player")
         SM.aliases, SM.aliasCount = {}, 0
+        SM.knownLevels = {}
         SM:InstallChatFilters()
         C_Timer.After(1, function() SM:Refresh() end)
         SM:Print("loaded. Type /sm for commands.")
     elseif event == "PLAYER_REGEN_ENABLED" and SM.friendlyNameplateUpdatePending then
         SM:ApplyFriendlyNameplatePrivacy()
-    elseif event == "PARTY_INVITE_REQUEST" and SM.db and SM.db.enabled and SM.db.autoDeclineBlocked then
-        local inviter = ...
-        if SM:IsBlocked(inviter) and not InCombatLockdown() then
+    elseif event == "PARTY_INVITE_REQUEST" and SM.db and SM.db.enabled and SM.db.blockLowLevelInvites then
+        local inviterGUID = select(8, ...)
+        if SM:IsKnownLowLevel(inviterGUID) and not InCombatLockdown() then
             DeclineGroup()
-            SM:Print("Blocked invite from " .. inviter .. ".")
+            SM:Print("Declined an invite from a known character below level 21.")
+        end
+    elseif event == "DUEL_REQUESTED" and SM.db and SM.db.enabled and SM.db.blockDuels then
+        if not InCombatLockdown() then
+            CancelDuel()
+            SM:Print("Duel request declined.")
         end
     elseif SM.db then
-        C_Timer.After(0, function() SM:Refresh() end)
+        C_Timer.After(0, function()
+            SM:RememberVisibleUnitLevels()
+            SM:Refresh()
+            if event == "PLAYER_TARGET_CHANGED" and SM.RefreshTargetPlayerNameplatePrivacyDeferred then
+                SM:RefreshTargetPlayerNameplatePrivacyDeferred()
+            end
+        end)
     end
 end)

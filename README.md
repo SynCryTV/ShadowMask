@@ -1,6 +1,8 @@
 # ShadowMask
 
-Retail WoW streamer-privacy addon. ShadowMask replaces character names with stable session aliases, hides blocked players' chat, masks your own name, and can decline invitations from names on its account-wide block list.
+Retail WoW streamer-privacy addon. ShadowMask replaces character names with stable session aliases, masks your own name, and hides selected player nameplates.
+
+Incoming protection is configurable independently: ShadowMask can block whispers and decline group invitations from characters it has already observed below level 21, and can decline every duel request. Level observations are session-only GUID data; it does not build or save a player-name list from chat.
 
 ## Install
 
