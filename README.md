@@ -18,6 +18,8 @@ For a local build, run `./tools/package.ps1`. The script reads the version from 
 
 `/sm alias Streamer` changes the alias used for your own character.
 
+Aliases never contain spaces so they remain compatible with unit-frame and chat addons. For example, the default group aliases are `Player01`, `Player02`, and so on.
+
 `/sm options` opens the ShadowMask settings page. It provides immediate controls for every privacy switch, alias format, and the account-wide block and trust lists.
 
 `/sm minimap` shows or hides the minimap button. Like Mimorium's button, it is fixed beside the minimap; left-click opens settings and right-click hides it.
@@ -25,6 +27,8 @@ For a local build, run `./tools/package.ps1`. The script reads the version from 
 ## Compatibility
 
 ShadowMask includes adapters for **DandersFrames** and **EllesmereUI**. It only replaces visible `FontString` label text and does not alter secure unit-frame attributes, so it remains safe around combat lockdown. DandersFrames is supported through its exposed frame API, with a fallback for older releases. EllesmereUI support is defensive because enabled modules vary by profile.
+
+Visible player-name text is also masked in unit tooltips, the character and inspect windows, and Blizzard or addon frames that use regular FontString labels. ShadowMask learns names from units, chat, friend lists, and guild rosters.
 
 The level of an incoming inviter is not reliably supplied by the WoW invitation event. Therefore, the initial version can automatically decline names already on the block list; a low-level rule can be added only for characters whose level has been observed and cached while grouped.
 

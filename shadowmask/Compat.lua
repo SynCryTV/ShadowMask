@@ -60,7 +60,6 @@ loader:SetScript("OnUpdate", function(_, delta)
     elapsed = elapsed + delta
     if elapsed >= 1 then
         elapsed = 0
-        if SM.db and SM.db.enabled and not InCombatLockdown() then SM:Refresh() end
+        if SM.db and SM.db.enabled then SM:Refresh() end
     end
 end)
-

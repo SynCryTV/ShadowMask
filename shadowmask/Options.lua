@@ -20,11 +20,19 @@ local function createEditBox(parent, label, key, y)
     box:SetPoint("TOPLEFT", 20, y - 22)
     box:SetAutoFocus(false)
     box:SetScript("OnEnterPressed", function(self)
-        if self:GetText() ~= "" then SM.db[key] = self:GetText(); SM:Refresh() end
+        if self:GetText() ~= "" then
+            SM.db[key] = SM:SanitizeAlias(self:GetText(), key == "ownAlias" and "Streamer" or "Player")
+            self:SetText(SM.db[key])
+            SM:Refresh()
+        end
         self:ClearFocus()
     end)
     box:SetScript("OnEditFocusLost", function(self)
-        if self:GetText() ~= "" then SM.db[key] = self:GetText(); SM:Refresh() end
+        if self:GetText() ~= "" then
+            SM.db[key] = SM:SanitizeAlias(self:GetText(), key == "ownAlias" and "Streamer" or "Player")
+            self:SetText(SM.db[key])
+            SM:Refresh()
+        end
     end)
     parent.controls[key] = box
 end

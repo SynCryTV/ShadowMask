@@ -28,6 +28,11 @@ function SM:NormalizeName(name)
     return (name:gsub("%s*%-%s*[^%s]+$", "")):lower()
 end
 
+function SM:SanitizeAlias(value, fallback)
+    local alias = tostring(value or ""):gsub("%s+", "")
+    return alias ~= "" and alias or fallback
+end
+
 function SM:IsTrusted(name)
     local key = self:NormalizeName(name)
     return key and self.db.trusted[key]
@@ -43,7 +48,7 @@ function SM:AliasForName(name)
     local bareName = name:gsub("%s*%-%s*[^%s]+$", "")
     local ownName = UnitName("player")
     if self.db.maskSelf and ownName and bareName:lower() == ownName:lower() then
-        return self.db.ownAlias
+        return self:SanitizeAlias(self.db.ownAlias, "Streamer")
     end
     if self:IsTrusted(bareName) then return name end
     if not self.db.maskGroup then return name end
@@ -53,7 +58,8 @@ function SM:AliasForName(name)
     if not key then return name end
     if not self.aliases[key] then
         self.aliasCount = (self.aliasCount or 0) + 1
-        self.aliases[key] = string.format("%s %02d", self.db.aliasPrefix, self.aliasCount)
+        local prefix = self:SanitizeAlias(self.db.aliasPrefix, "Player")
+        self.aliases[key] = string.format("%s%02d", prefix, self.aliasCount)
     end
     return self.aliases[key]
 end
@@ -97,7 +103,9 @@ SlashCmdList.SHADOWMASK = function(message)
         local list = command == "unblock" and "blocked" or "trusted"
         if key then SM.db[list][key] = nil; SM:Refresh(); SM:Print(rest .. " removed.") end
     elseif command == "alias" and rest ~= "" then
-        SM.db.ownAlias = rest; SM:Refresh(); SM:Print("Own alias set to " .. rest .. ".")
+        SM.db.ownAlias = SM:SanitizeAlias(rest, "Streamer")
+        SM:Refresh()
+        SM:Print("Own alias set to " .. SM.db.ownAlias .. ".")
     elseif command == "options" then
         SM:OpenOptions()
     elseif command == "minimap" then
@@ -117,6 +125,8 @@ eventFrame:SetScript("OnEvent", function(_, event, ...)
         ShadowMaskDB = ShadowMaskDB or {}
         copyDefaults(ShadowMaskDB, defaults)
         SM.db = ShadowMaskDB
+        SM.db.ownAlias = SM:SanitizeAlias(SM.db.ownAlias, "Streamer")
+        SM.db.aliasPrefix = SM:SanitizeAlias(SM.db.aliasPrefix, "Player")
         SM.aliases, SM.aliasCount = {}, 0
         SM:InstallChatFilters()
         C_Timer.After(1, function() SM:Refresh() end)

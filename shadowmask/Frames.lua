@@ -14,6 +14,7 @@ end
 
 function SM:RefreshFrames()
     if not self.db then return end
+    if self.RefreshKnownNames then self:RefreshKnownNames() end
     for _, entry in ipairs(unitFrames) do setUnitText(entry.unit, _G[entry.text]) end
 
     for index = 1, 4 do
@@ -22,5 +23,5 @@ function SM:RefreshFrames()
     for index = 1, 40 do
         setUnitText("raid" .. index, _G["CompactRaidFrame" .. index .. "Name"])
     end
+    if self.MaskVisibleText then self:MaskVisibleText() end
 end
-
