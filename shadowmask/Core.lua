@@ -103,6 +103,7 @@ end
 function SM:Refresh()
     if self.RefreshFrames then self:RefreshFrames() end
     if self.RefreshCompat then self:RefreshCompat() end
+    if self.RefreshGameTooltip then self:RefreshGameTooltip() end
     if self.UpdateMinimapButton then self:UpdateMinimapButton() end
 end
 

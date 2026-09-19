@@ -80,6 +80,7 @@ function SM:RefreshPrivacyPanels()
 end
 
 function SM:MaskGameTooltipUnit(tooltip)
+    if not self.db or not self.db.enabled then return end
     local _, unit = tooltip:GetUnit()
     if issecretvalue and issecretvalue(unit) then return end
     if not unit then return end
@@ -89,6 +90,13 @@ function SM:MaskGameTooltipUnit(tooltip)
     local name = tooltip:GetName()
     local title = name and _G[name .. "TextLeft1"]
     if title and title.SetText then title:SetText("") end
+end
+
+function SM:RefreshGameTooltip()
+    if not GameTooltip or not GameTooltip:IsShown() then return end
+    local _, unit = GameTooltip:GetUnit()
+    if issecretvalue and issecretvalue(unit) then return end
+    if unit then GameTooltip:SetUnit(unit) end
 end
 
 function SM:InstallPrivacyHooks()
@@ -116,6 +124,7 @@ function SM:InstallPrivacyHooks()
 end
 
 local function suppressPlayerTooltipName(_, lineData)
+    if not SM.db or not SM.db.enabled then return end
     local unit = lineData.unitToken
     if issecretvalue and issecretvalue(unit) then return end
     if not unit then return end
@@ -128,6 +137,7 @@ local function suppressPlayerTooltipName(_, lineData)
 end
 
 local function suppressGuidResolvedTooltipName(tooltip, data)
+    if not SM.db or not SM.db.enabled then return end
     local guid = data and data.guid
     if issecretvalue and issecretvalue(guid) then return end
     if type(guid) ~= "string" or not guid:match("^Player%-") then return end
