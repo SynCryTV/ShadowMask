@@ -35,7 +35,9 @@ jobs:
         run: |
           git fetch --tags --force
           $tag = "${{ steps.version.outputs.tag }}"
-          if (git rev-parse -q --verify "refs/tags/$tag") {
+          git rev-parse -q --verify "refs/tags/$tag" *> $null
+          $tagExists = $LASTEXITCODE -eq 0
+          if ($tagExists) {
             "create_release=false" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
           } else {
             "create_release=true" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
