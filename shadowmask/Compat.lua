@@ -203,11 +203,29 @@ end
 function SM:HideTargetNameplate(frame)
     if not frame or not frame.SetAlpha then return end
     self.hiddenTargetNameplates = self.hiddenTargetNameplates or setmetatable({}, { __mode = "k" })
+    self.targetNameplateAlphaHooks = self.targetNameplateAlphaHooks or setmetatable({}, { __mode = "k" })
+    self.targetNameplateWriting = self.targetNameplateWriting or setmetatable({}, { __mode = "k" })
     if self.hiddenTargetNameplates[frame] == nil then
         local alpha = frame.GetAlpha and frame:GetAlpha() or 1
         self.hiddenTargetNameplates[frame] = (issecretvalue and issecretvalue(alpha)) and 1 or alpha
     end
+    if not self.targetNameplateAlphaHooks[frame] then
+        self.targetNameplateAlphaHooks[frame] = true
+        -- Midnight's nameplate driver repaints the selected target after the
+        -- target event. Keep only frames in our explicit target set hidden;
+        -- released/other plates remain entirely under Blizzard's control.
+        hooksecurefunc(frame, "SetAlpha", function()
+            if SM.hiddenTargetNameplates and SM.hiddenTargetNameplates[frame]
+                and not SM.targetNameplateWriting[frame] then
+                SM.targetNameplateWriting[frame] = true
+                frame:SetAlpha(0)
+                SM.targetNameplateWriting[frame] = nil
+            end
+        end)
+    end
+    self.targetNameplateWriting[frame] = true
     pcall(frame.SetAlpha, frame, 0)
+    self.targetNameplateWriting[frame] = nil
 end
 
 function SM:HideTargetNameplateText(fontString)
@@ -229,8 +247,9 @@ function SM:RefreshTargetPlayerNameplatePrivacy()
 
     -- Blizzard shows a selected player's name again even with the name CVar
     -- disabled. Hide only the text regions, keeping health/cast/target visuals.
-    local plate = C_NamePlate and C_NamePlate.GetNamePlateForUnit and C_NamePlate.GetNamePlateForUnit("target")
-    local frame = plate and plate.UnitFrame
+    local safeContext = issecure and issecure() or false
+    local plate = C_NamePlate and C_NamePlate.GetNamePlateForUnit and C_NamePlate.GetNamePlateForUnit("target", safeContext)
+    local frame = plate and (plate.UnitFrame or plate.unitFrame)
     self:HideTargetNameplate(plate)
     self:HideTargetNameplate(frame)
     if frame then
