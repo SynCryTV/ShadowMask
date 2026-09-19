@@ -174,6 +174,13 @@ function SM:RefreshNameplates()
     end
 end
 
+function SM:TrackNameplateUnit(unit)
+    if not unit or not C_NamePlate or not C_NamePlate.GetNamePlateForUnit then return end
+    local plate = C_NamePlate.GetNamePlateForUnit(unit)
+    local frame = plate and plate.UnitFrame
+    if frame then self:TrackNameplateText(frame.name or frame.unitName, unit) end
+end
+
 function SM:InstallEllesmereNameProvider()
     local ui = _G.EllesmereUI
     local module = ui and ui._ModuleNS and ui._ModuleNS.EllesmereUIUnitFrames
@@ -202,7 +209,15 @@ end
 
 local loader = CreateFrame("Frame")
 loader:RegisterEvent("ADDON_LOADED")
-loader:SetScript("OnEvent", function(_, _, addon)
+loader:RegisterEvent("NAME_PLATE_UNIT_ADDED")
+loader:SetScript("OnEvent", function(_, event, addon)
+    if event == "NAME_PLATE_UNIT_ADDED" then
+        -- Friendly player plates are intentionally omitted from some
+        -- GetNamePlates() results. Resolve this exact WoW unit after all
+        -- nameplate addons have completed their own add handler.
+        C_Timer.After(0, function() SM:TrackNameplateUnit(addon) end)
+        return
+    end
     if addon == "DandersFrames" or addon == "EllesmereUI" or addon == "EllesmereUINameplates" or addon == "Plater" then
         C_Timer.After(0, function() SM:Refresh() end)
     end
