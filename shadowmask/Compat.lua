@@ -31,6 +31,7 @@ end
 function SM:RefreshEllesmereUI()
     local ui = _G.EllesmereUI
     if not ui then return end
+    self:InstallEllesmereNameProvider()
     -- EllesmereUIUnitFrames exposes full frames as named globals while its
     -- internal frame registry stays module-local.
     local fullFrames = {
@@ -60,6 +61,25 @@ function SM:RefreshEllesmereUI()
             for _, frame in pairs(module.frames or module.Frames or {}) do maskFrameName(frame) end
         end
     end
+end
+
+function SM:InstallEllesmereNameProvider()
+    local ui = _G.EllesmereUI
+    local module = ui and ui._ModuleNS and ui._ModuleNS.EllesmereUIUnitFrames
+    if not module or module._shadowMaskNameProvider or not module.ResolveUnitNickname then return end
+
+    local original = module.ResolveUnitNickname
+    module.ResolveUnitNickname = function(unit)
+        local name = UnitName(unit)
+        local isPlayer = UnitIsPlayer(unit)
+        if not (issecretvalue and (issecretvalue(name) or issecretvalue(isPlayer)))
+            and name and isPlayer then
+            return SM:AliasForName(name)
+        end
+        return original(unit)
+    end
+    module._shadowMaskNameProvider = true
+    if _G._EUF_RefreshUnitNames then _G._EUF_RefreshUnitNames() end
 end
 
 function SM:RefreshCompat()

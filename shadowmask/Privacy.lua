@@ -55,25 +55,6 @@ function SM:MaskText(text)
     return text
 end
 
-local function setTooltipTitle(tooltip)
-    if not tooltip or not tooltip.GetUnit then return end
-    local _, unit = tooltip:GetUnit()
-    if issecretvalue and issecretvalue(unit) then return end
-    if not unit then return end
-    local isPlayer = UnitIsPlayer(unit)
-    if issecretvalue and issecretvalue(isPlayer) then return end
-    if not isPlayer then return end
-    local name = UnitName(unit)
-    if issecretvalue and issecretvalue(name) then return end
-    if not name then return end
-    local title = tooltip:GetName() and _G[tooltip:GetName() .. "TextLeft1"]
-    if title and title.SetText then title:SetText(SM:AliasForName(name)) end
-end
-
-local function maskTooltip(tooltip)
-    setTooltipTitle(tooltip)
-end
-
 function SM:MaskCharacterFrame()
     if CharacterFrame and CharacterFrame.SetTitle and self.db and self.db.enabled then
         CharacterFrame:SetTitle(self:SanitizeAlias(self.db.ownAlias, "Streamer"))
@@ -108,10 +89,6 @@ function SM:InstallPrivacyHooks()
             hooksecurefunc("InspectFrame_UnitChanged", function() SM:MaskInspectFrame() end)
         end
     end
-end
-
-if TooltipDataProcessor and Enum and Enum.TooltipDataType then
-    TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.Unit, maskTooltip)
 end
 
 local setup = CreateFrame("Frame")
