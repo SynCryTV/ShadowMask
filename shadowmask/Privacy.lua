@@ -60,6 +60,9 @@ local function setTooltipTitle(tooltip)
     local _, unit = tooltip:GetUnit()
     if issecretvalue and issecretvalue(unit) then return end
     if not unit then return end
+    local isPlayer = UnitIsPlayer(unit)
+    if issecretvalue and issecretvalue(isPlayer) then return end
+    if not isPlayer then return end
     local name = UnitName(unit)
     if issecretvalue and issecretvalue(name) then return end
     if not name then return end

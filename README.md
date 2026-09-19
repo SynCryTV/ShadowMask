@@ -32,7 +32,7 @@ Visible player-name text is also masked in unit tooltips, the character and insp
 
 Midnight marks some combat UI text and frame state as protected secret values. ShadowMask deliberately avoids scanning arbitrary Blizzard frames and uses explicit hooks for the character window, inspect window, unit frames, and unit tooltips instead, preventing UI errors while masking supported name displays.
 
-Tooltip titles are updated only through Blizzard's post-population callback, avoiding delayed title rewrites and visual flicker.
+Tooltip titles are updated only through Blizzard's post-population callback, avoiding delayed title rewrites and visual flicker. NPC tooltip titles are never changed.
 
 The level of an incoming inviter is not reliably supplied by the WoW invitation event. Therefore, the initial version can automatically decline names already on the block list; a low-level rule can be added only for characters whose level has been observed and cached while grouped.
 
