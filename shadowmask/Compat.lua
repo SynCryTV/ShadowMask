@@ -255,7 +255,10 @@ end
 
 function SM:MaskEllesmereDamageMeterBar(module, bar, forceFallback)
     if not self.db or not self.db.enabled or not bar or self.damageMeterWriting and self.damageMeterWriting[bar] then return end
-    local fallback = self:SanitizeAlias(self.db.aliasPrefix, "Player")
+    -- Keep the last safe alias per pooled row. This avoids the local player's
+    -- row visibly bouncing Player -> Streamer on every meter update while the
+    -- source is briefly unavailable at the start of a render pass.
+    local fallback = bar._shadowMaskAlias or self:SanitizeAlias(self.db.aliasPrefix, "Player")
     -- Ellesmere writes the label before it stores the row source. The hook
     -- therefore has no safe identity on that first write; replace it at once
     -- so an original name never reaches a rendered frame.
@@ -286,6 +289,7 @@ function SM:MaskEllesmereDamageMeterBar(module, bar, forceFallback)
     alias = alias or fallback
     if not bar.label or not bar.label.SetText then return end
     self.damageMeterWriting = self.damageMeterWriting or setmetatable({}, { __mode = "k" })
+    bar._shadowMaskAlias = alias
     self.damageMeterWriting[bar] = true
     bar.label:SetText(alias)
     self.damageMeterWriting[bar] = nil
