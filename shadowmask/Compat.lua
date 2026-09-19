@@ -220,7 +220,10 @@ end
 function SM:RefreshTargetPlayerNameplatePrivacy()
     self:RestoreTargetNameplateText()
     self:RestoreTargetNameplates()
-    if not self.db or not self.db.enabled or not self.db.hideFriendlyNameplates or not UnitExists("target") then return end
+    -- Target privacy is independent from the optional global nameplate toggle:
+    -- streamers may keep ordinary plates on while their selected player must
+    -- never expose a name above the character.
+    if not self.db or not self.db.enabled or not UnitExists("target") then return end
     local isPlayer = UnitIsPlayer("target")
     if (issecretvalue and issecretvalue(isPlayer)) or not isPlayer then return end
 
