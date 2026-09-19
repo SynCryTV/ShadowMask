@@ -252,6 +252,15 @@ function SM:HideTargetPlayerNameplateForUnit(unit)
         plate = C_NamePlate.GetNamePlateForUnit(unit, issecure and issecure() or false)
     end
     local frame = plate and (plate.UnitFrame or plate.unitFrame)
+
+    -- Ellesmere already has the robust pre-event Blizzard UnitFrame
+    -- suppressor needed for its own plates. Reuse it for the selected player
+    -- instead of competing with its frame ownership and layout hooks.
+    local ui = _G.EllesmereUI
+    local euiNameplates = ui and ui._ModuleNS and ui._ModuleNS.EllesmereUINameplates
+    if plate and euiNameplates and euiNameplates.HideBlizzardFrame then
+        pcall(euiNameplates.HideBlizzardFrame, plate, unit)
+    end
     self:HideTargetNameplate(plate)
     self:HideTargetNameplate(frame)
     if frame then

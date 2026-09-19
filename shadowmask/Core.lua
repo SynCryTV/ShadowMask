@@ -97,6 +97,11 @@ local friendlyPlayerNameplateCVars = {
     "nameplateShowOnlyNameForFriendlyPlayerUnits",
     -- Opposite-faction players use a separate Blizzard name display channel.
     "UnitNameEnemyPlayerName",
+    -- Blizzard renders title and guild as independent world-name layers. They
+    -- must be disabled separately or a selected player still leaks both.
+    "UnitNamePlayerPVPTitle",
+    "UnitNamePlayerGuild",
+    "UnitNameGuildTitle",
 }
 
 function SM:ApplyEllesmereFriendlyNameplatePrivacy(isHiding)
