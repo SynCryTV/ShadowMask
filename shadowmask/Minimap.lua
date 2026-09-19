@@ -51,15 +51,16 @@ function SM:CreateMinimapButton()
         if mouseButton == "LeftButton" then
             SM:OpenOptions()
         else
-            SM:SetMinimapButtonShown(false)
-            SM:Print("Minimap button hidden. Type /sm minimap to show it again.")
+            SM.db.enabled = not SM.db.enabled
+            SM:Refresh()
+            SM:Print(SM.db.enabled and "enabled." or "disabled.")
         end
     end)
     button:SetScript("OnEnter", function(self)
         GameTooltip:SetOwner(self, "ANCHOR_LEFT")
         GameTooltip:AddLine("ShadowMask")
         GameTooltip:AddLine("Left-click: settings", 1, 1, 1)
-        GameTooltip:AddLine("Right-click: hide button", 0.7, 0.7, 0.7)
+        GameTooltip:AddLine("Right-click: toggle on/off", 0.7, 0.7, 0.7)
         GameTooltip:Show()
     end)
     button:SetScript("OnLeave", GameTooltip_Hide)
