@@ -108,20 +108,9 @@ local function findGroupPlayerByGUID(guid)
     end
 end
 
-local function cacheTooltipUnit(tooltip, data)
-    local unit = data and findGroupPlayerByGUID(data.guid)
-    if not unit then return end
-    SM.tooltipUnitTokens = SM.tooltipUnitTokens or {}
-    SM.tooltipUnitTokens[tooltip] = unit
-end
-
-local function suppressPlayerTooltipName(tooltip, lineData)
+local function suppressPlayerTooltipName(_, lineData)
     local unit = lineData.unitToken
-    -- Midnight can give unitToken as a secret value for custom group frames.
-    -- The Unit tooltip pre-call has already resolved a clean party/raid token
-    -- from its GUID, so the name line can still be consumed before it renders.
-    if issecretvalue and issecretvalue(unit) then unit = nil end
-    if not unit and SM.tooltipUnitTokens then unit = SM.tooltipUnitTokens[tooltip] end
+    if issecretvalue and issecretvalue(unit) then return end
     if not unit then return end
     local isPlayer = UnitIsPlayer(unit)
     if issecretvalue and issecretvalue(isPlayer) then return end
@@ -131,10 +120,20 @@ local function suppressPlayerTooltipName(tooltip, lineData)
     return true
 end
 
+local function suppressGuidResolvedTooltipName(tooltip, data)
+    local guid = data and data.guid
+    if issecretvalue and issecretvalue(guid) then return end
+    local unit = findGroupPlayerByGUID(guid)
+    if not unit then return end
+    local title = tooltip:GetName() and _G[tooltip:GetName() .. "TextLeft1"]
+    if title and title.SetText then title:SetText("") end
+end
+
 if TooltipDataProcessor and Enum and Enum.TooltipDataType then
     -- EllesmereUI group-frame tooltips can expose a secret unit token while
-    -- retaining a clean GUID. This must happen before tooltip lines render.
-    TooltipDataProcessor.AddTooltipPreCall(Enum.TooltipDataType.Unit, cacheTooltipUnit)
+    -- retaining a clean GUID. Keep this post-render fallback outside the
+    -- secure tooltip pre-pipeline; Midnight rejects custom pre-processing.
+    TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.Unit, suppressGuidResolvedTooltipName)
 end
 
 if TooltipDataProcessor and Enum and Enum.TooltipDataLineType then
