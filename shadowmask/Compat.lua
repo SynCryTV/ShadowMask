@@ -263,6 +263,20 @@ function SM:HideTargetPlayerNameplateForUnit(unit)
     end
 end
 
+function SM:InstallTargetNameplateSuppressor()
+    if self.targetNameplateDriverHooked then return end
+    local driver = _G.NamePlateDriverFrame
+    if not driver or not driver.OnNamePlateAdded then return end
+    self.targetNameplateDriverHooked = true
+
+    -- Run in the driver's own nameplate-add pass. Ellesmere uses this same
+    -- timing to suppress Blizzard's UnitFrame before NAME_PLATE_UNIT_ADDED;
+    -- doing it later is too late for the selected name-only player display.
+    hooksecurefunc(driver, "OnNamePlateAdded", function(_, unit)
+        SM:HideTargetPlayerNameplateForUnit(unit)
+    end)
+end
+
 function SM:RefreshTargetPlayerNameplatePrivacy()
     self:RestoreTargetNameplateText()
     self:RestoreTargetNameplates()
@@ -423,6 +437,7 @@ function SM:InstallEllesmereNameProvider()
 end
 
 function SM:RefreshCompat()
+    self:InstallTargetNameplateSuppressor()
     self:RefreshDandersFrames()
     self:RefreshEllesmereUI()
     self:RefreshNameplates()
