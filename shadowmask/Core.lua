@@ -106,6 +106,7 @@ local friendlyPlayerNameplateCVars = {
     "nameplateShowFriends",
     -- EllesmereUI name-only mode explicitly enables this separate WoW CVar.
     "UnitNameFriendlyPlayerName",
+    "nameplateShowOnlyNameForFriendlyPlayerUnits",
 }
 
 function SM:ApplyEllesmereFriendlyNameplatePrivacy(isHiding)
