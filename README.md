@@ -28,6 +28,8 @@ Aliases never contain spaces so they remain compatible with unit-frame and chat 
 
 ShadowMask includes adapters for **DandersFrames** and **EllesmereUI**. It only replaces visible `FontString` label text and does not alter secure unit-frame attributes, so it remains safe around combat lockdown. DandersFrames is supported through its exposed frame API, with a fallback for older releases. EllesmereUI support is defensive because enabled modules vary by profile.
 
+The DandersFrames adapter also masks the player frame embedded in its party header.
+
 Visible player-name text is also masked in unit tooltips, the character and inspect windows, and Blizzard or addon frames that use regular FontString labels. Global-chat authors are replaced with a generic alias without being cached or stored; the temporary display cache is rebuilt only from currently visible units.
 
 Midnight marks some combat UI text and frame state as protected secret values. ShadowMask deliberately avoids scanning arbitrary Blizzard frames and uses explicit hooks for the character window, inspect window, unit frames, and unit tooltips instead, preventing UI errors while masking supported name displays.

@@ -21,6 +21,8 @@ function SM:RefreshDandersFrames()
     -- Fallback for releases exposing only the documented public lookup API.
     local api = df.Api
     if api and api.GetFrameForUnit then
+        -- DandersFrames puts the player in its party header as well.
+        maskFrameName(api.GetFrameForUnit("player", "party"))
         for i = 1, 4 do maskFrameName(api.GetFrameForUnit("party" .. i, "party")) end
         for i = 1, 40 do maskFrameName(api.GetFrameForUnit("raid" .. i, "raid")) end
     end
