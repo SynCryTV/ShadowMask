@@ -91,23 +91,6 @@ function SM:InstallPrivacyHooks()
     end
 end
 
-local function findGroupPlayerByGUID(guid)
-    if issecretvalue and issecretvalue(guid) then return nil end
-    if not guid then return nil end
-    local tokens = { "player" }
-    if IsInRaid() then
-        for index = 1, GetNumGroupMembers() do tokens[#tokens + 1] = "raid" .. index end
-    else
-        for index = 1, GetNumSubgroupMembers() do tokens[#tokens + 1] = "party" .. index end
-    end
-    for _, unit in ipairs(tokens) do
-        local unitGUID = UnitGUID(unit)
-        if not (issecretvalue and issecretvalue(unitGUID)) and unitGUID == guid then
-            return unit
-        end
-    end
-end
-
 local function suppressPlayerTooltipName(_, lineData)
     local unit = lineData.unitToken
     if issecretvalue and issecretvalue(unit) then return end
@@ -123,16 +106,17 @@ end
 local function suppressGuidResolvedTooltipName(tooltip, data)
     local guid = data and data.guid
     if issecretvalue and issecretvalue(guid) then return end
-    local unit = findGroupPlayerByGUID(guid)
-    if not unit then return end
+    if type(guid) ~= "string" or not guid:match("^Player%-%") then return end
+    -- Some custom unit frames expose no usable unitToken at all. A player
+    -- GUID is still clean tooltip data and distinguishes players from NPCs.
     local title = tooltip:GetName() and _G[tooltip:GetName() .. "TextLeft1"]
     if title and title.SetText then title:SetText("") end
 end
 
 if TooltipDataProcessor and Enum and Enum.TooltipDataType then
-    -- EllesmereUI group-frame tooltips can expose a secret unit token while
-    -- retaining a clean GUID. Keep this post-render fallback outside the
-    -- secure tooltip pre-pipeline; Midnight rejects custom pre-processing.
+    -- EllesmereUI and other custom unit frames can expose a secret or absent
+    -- unitToken while retaining a clean Player GUID. This stays outside the
+    -- secure tooltip pre-pipeline, which Midnight rejects for custom code.
     TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.Unit, suppressGuidResolvedTooltipName)
 end
 
