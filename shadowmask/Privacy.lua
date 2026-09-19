@@ -91,6 +91,22 @@ function SM:InstallPrivacyHooks()
     end
 end
 
+local function maskUnitTooltipName(_, lineData)
+    local unit = lineData.unitToken
+    if issecretvalue and issecretvalue(unit) then return end
+    if not unit then return end
+    local isPlayer = UnitIsPlayer(unit)
+    if issecretvalue and issecretvalue(isPlayer) then return end
+    if not isPlayer then return end
+    local name = UnitName(unit)
+    if issecretvalue and issecretvalue(name) then return end
+    if name then lineData.leftText = SM:AliasForName(name) end
+end
+
+if TooltipDataProcessor and Enum and Enum.TooltipDataLineType then
+    TooltipDataProcessor.AddLinePreCall(Enum.TooltipDataLineType.UnitName, maskUnitTooltipName)
+end
+
 local setup = CreateFrame("Frame")
 setup:RegisterEvent("PLAYER_LOGIN")
 setup:RegisterEvent("ADDON_LOADED")
