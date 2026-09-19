@@ -20,7 +20,7 @@ For a local build, run `./tools/package.ps1`. The script reads the version from 
 
 `/sm options` opens the ShadowMask settings page. It provides immediate controls for every privacy switch, alias format, and the account-wide block and trust lists.
 
-The minimap button opens settings with a left-click, toggles masking with a right-click, and can be dragged. It can also be hidden in the settings page.
+`/sm minimap` shows or hides the minimap button. Like Mimorium's button, it is fixed beside the minimap; left-click opens settings and right-click hides it.
 
 ## Compatibility
 

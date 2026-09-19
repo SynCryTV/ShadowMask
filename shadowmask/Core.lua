@@ -11,7 +11,6 @@ local defaults = {
     maskChat = true,
     autoDeclineBlocked = true,
     showMinimapButton = true,
-    minimapAngle = 225,
     blocked = {},
     trusted = {},
 }
@@ -100,13 +99,11 @@ SlashCmdList.SHADOWMASK = function(message)
     elseif command == "alias" and rest ~= "" then
         SM.db.ownAlias = rest; SM:Refresh(); SM:Print("Own alias set to " .. rest .. ".")
     elseif command == "options" then
-        if Settings and SM.settingsCategory then
-            Settings.OpenToCategory(SM.settingsCategory:GetID())
-        elseif InterfaceOptionsFrame_OpenToCategory and SM.optionsPanel then
-            InterfaceOptionsFrame_OpenToCategory(SM.optionsPanel)
-        end
+        SM:OpenOptions()
+    elseif command == "minimap" then
+        SM:ToggleMinimapButton()
     else
-        SM:Print("/sm options | toggle | block <name> | trust <name> | unblock <name> | untrust <name> | alias <text>")
+        SM:Print("/sm options | minimap | toggle | block <name> | trust <name> | unblock <name> | untrust <name> | alias <text>")
     end
 end
 
